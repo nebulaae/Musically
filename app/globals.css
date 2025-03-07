@@ -132,6 +132,6 @@
 
   .glassmorphism {
     background: inherit;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(18px);
   }
 }

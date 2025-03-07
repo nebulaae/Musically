@@ -1,6 +1,8 @@
-import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
+import fs from 'fs/promises';
 import * as NodeID3 from 'node-id3';
+
 import { v4 as uuidv4 } from 'uuid';
 import { NextResponse } from 'next/server';
 
@@ -14,6 +16,23 @@ export interface Track {
   type?: string;
 }
 
+async function fileHash(filePath: string): Promise<string> {
+  const fileBuffer = await fs.readFile(filePath);
+  const hashSum = crypto.createHash('sha256');
+  hashSum.update(fileBuffer);
+  return hashSum.digest('hex');
+}
+
+const coverCache: { [key: string]: string } = {};
+
+async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
+    if (!coverCache[hash]) {
+        await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
+        coverCache[hash] = `/covers/${coverFilename}`;
+    }
+    return coverCache[hash];
+}
+
 export async function getTracks(): Promise<Track[]> {
   const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
   
@@ -25,11 +44,11 @@ export async function getTracks(): Promise<Track[]> {
       if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
         const filePath = path.join(tracksDirectory, filename);
         const id = uuidv4();
-        const fileType = path.extname(filename).toLowerCase().substring(1); // Extract type without '.'
+        const fileType = path.extname(filename).toLowerCase().substring(1);
         let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
         let author: string | undefined;
         let album: string | undefined;
-        let cover: string | undefined = '/default-cover.png';
+        let cover: string | undefined = '/default-cover.jpg';
         
         if (path.extname(filename).toLowerCase() === '.mp3') {
           try {
@@ -40,17 +59,28 @@ export async function getTracks(): Promise<Track[]> {
               album = tags.album;
               
               // Handle cover image from ID3 tags
-              if (tags.image && typeof tags.image !== 'string' && tags.image.imageBuffer) {
-                // Save the cover to public folder for serving
-                const coverFilename = `${id}-cover.jpg`;
-                const coverPath = path.join(process.cwd(), 'public', 'covers', coverFilename);
-                
+              if (
+                tags.image &&
+                typeof tags.image !== 'string' &&
+                tags.image.imageBuffer
+              ) {
                 try {
-                  // Make sure the covers directory exists
-                  await fs.mkdir(path.join(process.cwd(), 'public', 'covers'), { recursive: true });
-                  // Write the cover image to file
-                  await fs.writeFile(coverPath, tags.image.imageBuffer);
-                  cover = `/covers/${coverFilename}`;
+                  const hash = await fileHash(filePath);
+                  const coverFilename = `${hash}-cover.jpg`;
+                  const coverPath = path.join(process.cwd(), 'public', 'covers');
+                  await fs.mkdir(coverPath, { recursive: true });
+                  
+                  if (!coverCache[hash]) {
+                    // Save the cover to public folder for serving only if it's not in the cache
+                    try {
+                      cover = await getCoverFromCache(hash, coverFilename, tags.image.imageBuffer);
+                    } catch (err) {
+                      console.error(`Error saving cover image for ${filename}:`, err);
+                      cover = `/default-cover.png`;
+                    }
+                  } else {
+                    cover = coverCache[hash]
+                  }
                 } catch (err) {
                   console.error(`Error saving cover image for ${filename}:`, err);
                 }
