@@ -1,11 +1,10 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { getTracks } from "@/lib/tracks";
+import { getTracks } from "@/app/api/tracks/route";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Bottombar } from "@/components/shared/Bottombar";
 import { AppSidebar } from "@/components/shared/AppSidebar";
-import { BottomPlayer } from "@/components/player/BottomPlayer";
 
 import "./globals.css";
 
@@ -29,7 +28,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const tracks = await getTracks();
 
   return (
     <html lang="en">
@@ -41,7 +39,6 @@ export default async function RootLayout({
           <main>
             {children}
             <Bottombar />
-            <BottomPlayer tracks={tracks} />
           </main>
         </SidebarProvider>
       </body>
