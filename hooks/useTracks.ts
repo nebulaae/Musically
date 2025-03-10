@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Track } from "@/app/api/tracks/route";
 
-export const useTracks = () => {
+export const useTracks = (...trackNames: string[]) => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -12,7 +12,16 @@ export const useTracks = () => {
     const fetchTracks = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/tracks');
+
+        let url = '/api/tracks';
+        // If track names are provided, add them as query parameters
+        if (trackNames.length > 0) {
+          const queryParams = new URLSearchParams();
+          trackNames.forEach(name => queryParams.append('tracks', name));
+          url = `${url}?${queryParams.toString()}`;
+        }
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch tracks: ${response.status} ${response.statusText}`);
@@ -34,7 +43,7 @@ export const useTracks = () => {
     };
 
     fetchTracks();
-  }, []);
+  }, [trackNames.join(',')]); // Re-fetch when track list changes
 
   // Handle track selection
   const handleTrackSelect = (index: number) => {

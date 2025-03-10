@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { getTracks } from "@/app/api/tracks/route";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Bottombar } from "@/components/shared/Bottombar";
 import { AppSidebar } from "@/components/shared/AppSidebar";
@@ -30,7 +29,7 @@ export default async function RootLayout({
 }>) {
 
   return (
-    <html lang="en">
+    <html lang="ru">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

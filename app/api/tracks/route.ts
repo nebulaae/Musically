@@ -4,17 +4,7 @@ import fs from 'fs/promises';
 import * as NodeID3 from 'node-id3';
 
 import { v4 as uuidv4 } from 'uuid';
-import { NextResponse } from 'next/server';
-
-export interface Track {
-  id: string;
-  title: string;
-  author?: string;
-  album?: string;
-  src: string;
-  cover?: string;
-  type?: string;
-}
+import { NextRequest, NextResponse } from 'next/server';
 
 async function fileHash(filePath: string): Promise<string> {
   const fileBuffer = await fs.readFile(filePath);
@@ -26,21 +16,26 @@ async function fileHash(filePath: string): Promise<string> {
 const coverCache: { [key: string]: string } = {};
 
 async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
-    if (!coverCache[hash]) {
-        await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
-        coverCache[hash] = `/covers/${coverFilename}`;
-    }
-    return coverCache[hash];
+  if (!coverCache[hash]) {
+    await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
+    coverCache[hash] = `/covers/${coverFilename}`;
+  }
+  return coverCache[hash];
 }
 
-export async function getTracks(): Promise<Track[]> {
+export async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
   const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
-  
+
   try {
     const filenames = await fs.readdir(tracksDirectory);
     const tracksData: Track[] = [];
-    
-    for (const filename of filenames) {
+
+    // Filter filenames if requestedTracks is provided
+    const filteredFilenames = requestedTracks && requestedTracks.length > 0
+      ? filenames.filter(filename => requestedTracks.includes(filename))
+      : filenames;
+
+    for (const filename of filteredFilenames) {
       if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
         const filePath = path.join(tracksDirectory, filename);
         const id = uuidv4();
@@ -49,7 +44,7 @@ export async function getTracks(): Promise<Track[]> {
         let author: string | undefined;
         let album: string | undefined;
         let cover: string | undefined = '/default-cover.jpg';
-        
+
         if (path.extname(filename).toLowerCase() === '.mp3') {
           try {
             const tags = NodeID3.read(filePath);
@@ -57,7 +52,7 @@ export async function getTracks(): Promise<Track[]> {
               title = tags.title || title;
               author = tags.artist || tags.composer;
               album = tags.album;
-              
+
               // Handle cover image from ID3 tags
               if (
                 tags.image &&
@@ -69,7 +64,7 @@ export async function getTracks(): Promise<Track[]> {
                   const coverFilename = `${hash}-cover.jpg`;
                   const coverPath = path.join(process.cwd(), 'public', 'covers');
                   await fs.mkdir(coverPath, { recursive: true });
-                  
+
                   if (!coverCache[hash]) {
                     // Save the cover to public folder for serving only if it's not in the cache
                     try {
@@ -79,7 +74,7 @@ export async function getTracks(): Promise<Track[]> {
                       cover = `/default-cover.png`;
                     }
                   } else {
-                    cover = coverCache[hash]
+                    cover = coverCache[hash];
                   }
                 } catch (err) {
                   console.error(`Error saving cover image for ${filename}:`, err);
@@ -90,7 +85,7 @@ export async function getTracks(): Promise<Track[]> {
             console.error(`Error reading ID3 tags from ${filename}:`, error);
           }
         }
-        
+
         tracksData.push({
           id: id,
           title: title,
@@ -102,7 +97,7 @@ export async function getTracks(): Promise<Track[]> {
         });
       }
     }
-    
+
     return tracksData;
   } catch (error) {
     console.error("Error reading tracks directory:", error);
@@ -110,7 +105,10 @@ export async function getTracks(): Promise<Track[]> {
   }
 }
 
-export async function GET() {
-  const tracks = await getTracks();
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const requestedTracks = searchParams.getAll('tracks');
+
+  const tracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
   return NextResponse.json(tracks);
 }

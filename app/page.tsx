@@ -1,68 +1,69 @@
 "use client"
 
-import Image from 'next/image';
+import { useTracks } from "@/hooks/useTracks";
+import { FetchTracks } from "@/components/shared/FetchTracks";
+import { useState, useCallback } from 'react'; // Import useState and useCallback
+import { BottomPlayer } from "@/components/player/BottomPlayer"; // Import BottomPlayer
 
-import { useTracks } from '@/hooks/useTracks';
-import { BottomPlayer } from '@/components/player/BottomPlayer';
-import { Play } from 'lucide-react';
+const Page = () => {
+    const collection = useTracks("Fell In Love.mp3", "VOGUE - Lil Tecca.mp3");
+    const cartiCollection = useTracks("Magnolia.mp3", "Racks Up.mp3");
 
-export default function MusicPlayerPage() {
-  const {
-    tracks,
-    currentTrackIndex,
-    isPlaying,
-    isLoading,
-    error,
-    handleTrackSelect,
-    handlePlayPauseToggle,
-    setCurrentTrackIndex
-  } = useTracks();
+    // Centralized Player State
+    const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+    const [currentTracks, setCurrentTracks] = useState<Track[]>([]); // To hold the tracks for the BottomPlayer
 
-  return (
-    <div className="w-full">
-      <div className="mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Подборки</h1>
-        {isLoading ? (
-          <div className="text-center">
-            <p className="">Загружаем музыку...</p>
-          </div>
-        ) : error ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <strong className="font-bold">Ошибка! </strong>
-            <span className="block sm:inline">{error}</span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-24">
-            {tracks.map((track, index) => (
-              <div
-                key={track.id}
-                className="flex flex-col md:flex-row items-center bg-white/40 border border-neutral-200 group rounded-lg overflow-hidden cursor-pointer transition-colors hover:bg-white/20 relative"
-                onClick={() => handleTrackSelect(index)}
-              >
-                <Image src={track?.cover || '/default-cover.jpg'} alt="Track Cover" width={128} height={180} />
-                <div className="p-4 flex flex-col justify-end">
-                  <h3 className="font-semibold text-base truncate">{track.title}</h3>
-                  <p className="text-sm text-gray-400 truncate">{track.author}</p>
-                  <p className="text-sm text-gray-400 truncate">{track.album}</p>
-                </div>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] flex items-center justify-center">
-                  <Play className='w-5 h-5' />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+    // Play Pause Toggle - Centralized
+    const handlePlayPauseToggle = useCallback(() => {
+        setIsPlaying(!isPlaying);
+    }, [isPlaying]);
 
-      {tracks.length > 0 && (
-        <BottomPlayer
-          tracks={tracks}
-          currentTrackIndex={currentTrackIndex}
-          onTrackIndexChange={setCurrentTrackIndex}
-          isPlaying={isPlaying}
-          onPlayPauseToggle={handlePlayPauseToggle}
-        />
-      )}
-    </div>
-  );
-}
+    // Track Select Handler - Centralized
+    const handleTrackSelect = useCallback((index: number, tracksSource: Track[]) => {
+        setCurrentTrackIndex(index);
+        setCurrentTracks(tracksSource); // Set the tracks for the BottomPlayer
+        setIsPlaying(true); // Auto-play when a track is selected
+    }, []);
+
+    return (
+        <div className="w-full">
+            <div className="p-4">
+                <h1 className="text-2xl font-bold mb-6">Lil Tecca</h1>
+                <FetchTracks
+                    tracks={collection.tracks}
+                    currentTrackIndex={currentTrackIndex} // Pass centralized state
+                    isPlaying={isPlaying}             // Pass centralized state
+                    isLoading={collection.isLoading}
+                    error={collection.error}
+                    handleTrackSelect={(index) => handleTrackSelect(index, collection.tracks)} // Pass modified handler
+                    handlePlayPauseToggle={handlePlayPauseToggle} // Pass centralized handler
+                    setCurrentTrackIndex={() => {}} //  No need to set index from here directly
+                />
+                <h1 className="text-2xl font-bold mb-6">PlayboiCarti</h1>
+                <FetchTracks
+                    tracks={cartiCollection.tracks}
+                    currentTrackIndex={currentTrackIndex} // Pass centralized state
+                    isPlaying={isPlaying}             // Pass centralized state
+                    isLoading={cartiCollection.isLoading}
+                    error={cartiCollection.error}
+                    handleTrackSelect={(index) => handleTrackSelect(index, cartiCollection.tracks)} // Pass modified handler
+                    handlePlayPauseToggle={handlePlayPauseToggle} // Pass centralized handler
+                    setCurrentTrackIndex={() => {}} // No need to set index from here directly
+                />
+            </div>
+            {/* Single BottomPlayer instance */}
+            {currentTracks.length > 0 && (
+                <BottomPlayer
+                    tracks={currentTracks} // Use the currently active track list
+                    currentTrackIndex={currentTrackIndex} // Pass centralized state
+                    onTrackIndexChange={setCurrentTrackIndex} // Pass centralized setter - might need to adjust this logic
+                    isPlaying={isPlaying}             // Pass centralized state
+                    onPlayPauseToggle={handlePlayPauseToggle} // Pass centralized handler
+                />
+            )}
+        </div>
+    );
+};
+
+export default Page;
