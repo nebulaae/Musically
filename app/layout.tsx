@@ -38,11 +38,9 @@ export default async function RootLayout({
         <SidebarProvider>
           <AudioProvider>
             <AppSidebar />
-            <main>
               {children}
-              <BottomPlayer />
-              <Bottombar />
-            </main>
+            <BottomPlayer />
+            <Bottombar />
           </AudioProvider>
         </SidebarProvider>
       </body>

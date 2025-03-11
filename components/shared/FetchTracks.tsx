@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 import { memo } from 'react';
 import { Play, Pause } from 'lucide-react';
+import { SoundWave } from '../ui/special/SoundWave';
 import { useAudio } from '@/components/player/AudioContext';
 
 interface FetchTracksProps {
@@ -14,24 +15,24 @@ interface FetchTracksProps {
   handleTrackSelect: (index: number) => void;
 }
 
-export const FetchTracks = memo(({ 
-  tracks, 
-  isLoading, 
-  error, 
-  handleTrackSelect 
+export const FetchTracks = memo(({
+  tracks,
+  isLoading,
+  error,
+  handleTrackSelect
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
   // Check if a track is the currently playing track
   const isTrackPlaying = (track: Track) => {
     if (!isPlaying) return false;
-    
+
     const currentTrack = currentTracks[currentTrackIndex];
     return currentTrack && currentTrack.id === track.id;
   };
 
   if (isLoading) {
-    return <div className="text-center py-4">Loading tracks...</div>;
+    return <div className="text-start py-4">Заргужаем песни...</div>;
   }
 
   if (error) {
@@ -39,23 +40,24 @@ export const FetchTracks = memo(({
   }
 
   if (tracks.length === 0) {
-    return <div className="text-center py-4">No tracks found</div>;
+    return <div className="text-start py-4">Песни не найдены.</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="flex flex-row overflow-x-auto overflow-y-hidden">
       {tracks.map((track, index) => (
-        <div 
-          key={track.id} 
-          className="flex flex-col md:flex-row items-center bg-white/40 border border-neutral-200 group rounded-lg overflow-hidden cursor-pointer transition-colors hover:bg-white/20 relative"
+        <div
+          key={track.id}
+          className="relative flex flex-col items-start group p-4 cursor-pointer transition-colors hover:bg-white/20"
           onClick={() => handleTrackSelect(index)}
         >
           <div className="relative">
             <Image
               src={track.cover || '/default-cover.jpg'}
               alt={track.title}
-              width={128}
-              height={128}
+              width={200}
+              height={200}
+              className="rounded-lg"
             />
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] flex items-center justify-center">
               {isTrackPlaying(track) ? (
@@ -65,15 +67,10 @@ export const FetchTracks = memo(({
               )}
             </div>
           </div>
-          <div className="ml-4">
-            <h3 className="font-medium">{track.title}</h3>
+          <div className="mt-4">
+            <h3 className="font-semibold">{track.title}</h3>
             <p className="text-sm text-gray-500">{track.author}</p>
           </div>
-          {isTrackPlaying(track) && (
-            <div className="ml-auto">
-              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            </div>
-          )}
         </div>
       ))}
     </div>

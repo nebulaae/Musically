@@ -55,10 +55,10 @@ export const AppSidebar = () => {
                                     <SidebarMenuButton asChild>
                                         <Link
                                             href={link.url}
-                                            className="px-4 py-5"
+                                            className="flex flex-row items-center px-4 py-7"
                                         >
-                                            {link.icon}
-                                            <span className="text-[16px]">{link.title}</span>
+                                            <div className="flex items-center justify-center size-8">{link.icon}</div>
+                                            <span className="hidden lg:flex text-[18px]">{link.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

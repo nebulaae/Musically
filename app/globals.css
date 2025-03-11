@@ -124,6 +124,14 @@
     @apply border-border outline-ring/50;
   }
 
+  ::-webkit-scrollbar {
+    @apply w-1 h-0;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-black/20 backdrop-blur-[3px];
+  }
+
   body {
     @apply bg-background text-foreground;
     background: rgb(255, 235, 249);

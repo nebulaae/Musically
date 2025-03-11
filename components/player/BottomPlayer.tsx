@@ -1,4 +1,3 @@
-// /components/player/BottomPlayer.tsx
 "use client"
 
 import Image from 'next/image';
@@ -14,7 +13,8 @@ import {
     Play,
     Pause,
     Maximize2,
-    Minimize2
+    Minimize2,
+    Loader2
 } from 'lucide-react';
 import { useAudio } from './AudioContext';
 
@@ -37,6 +37,7 @@ const BottomPlayer = () => {
 
     const [isPlayerVisible, setIsPlayerVisible] = useState<boolean>(false);
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
+    const [isButtonDisabled, setIsButtonDisabled] = useState<boolean>(false);
 
     const currentTrack = tracks?.[currentTrackIndex];
 
@@ -49,10 +50,23 @@ const BottomPlayer = () => {
         }
     }, [tracks]);
 
-    // Toggle play/pause
-    const handlePlayPauseToggle = useCallback(() => {
-        togglePlayPause();
-    }, [togglePlayPause]);
+    // Toggle play/pause with button disable safety
+    const handlePlayPauseToggle = useCallback(async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        
+        if (isButtonDisabled) return;
+        
+        setIsButtonDisabled(true);
+        
+        try {
+            await togglePlayPause();
+        } catch (error) {
+            console.error("Error toggling play/pause:", error);
+        } finally {
+            // Re-enable button after a short delay
+            setTimeout(() => setIsButtonDisabled(false), 300);
+        }
+    }, [togglePlayPause, isButtonDisabled]);
 
     // Handle volume change from slider
     const handleVolumeChange = useCallback((value: number[]) => {
@@ -80,17 +94,41 @@ const BottomPlayer = () => {
         setIsExpanded(prev => !prev);
     }, []);
 
-    // Handle next track click
-    const handleNextTrack = useCallback((e: React.MouseEvent) => {
+    // Handle next track click with button disable safety
+    const handleNextTrack = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        nextTrack();
-    }, [nextTrack]);
+        
+        if (isButtonDisabled || !hasNextTrack) return;
+        
+        setIsButtonDisabled(true);
+        
+        try {
+            await nextTrack();
+        } catch (error) {
+            console.error("Error navigating to next track:", error);
+        } finally {
+            // Re-enable button after a short delay
+            setTimeout(() => setIsButtonDisabled(false), 300);
+        }
+    }, [nextTrack, hasNextTrack, isButtonDisabled]);
 
-    // Handle previous track click
-    const handlePrevTrack = useCallback((e: React.MouseEvent) => {
+    // Handle previous track click with button disable safety
+    const handlePrevTrack = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        prevTrack();
-    }, [prevTrack]);
+        
+        if (isButtonDisabled || !hasPrevTrack) return;
+        
+        setIsButtonDisabled(true);
+        
+        try {
+            await prevTrack();
+        } catch (error) {
+            console.error("Error navigating to previous track:", error);
+        } finally {
+            // Re-enable button after a short delay
+            setTimeout(() => setIsButtonDisabled(false), 300);
+        }
+    }, [prevTrack, hasPrevTrack, isButtonDisabled]);
 
     // Don't render anything if no tracks or player is hidden
     if (!isPlayerVisible || !tracks || tracks.length === 0 || !currentTrack) {
@@ -147,22 +185,23 @@ const BottomPlayer = () => {
                     <div className="flex flex-col items-center justify-center gap-2 w-full">
                         <div className={`flex items-center space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
                             <motion.button
-                                className={`p-2 rounded-full ${hasPrevTrack ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                                onClick={hasPrevTrack ? handlePrevTrack : undefined}
-                                whileTap={hasPrevTrack ? { scale: 0.9 } : undefined}
+                                className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                onClick={hasPrevTrack && !isButtonDisabled ? handlePrevTrack : undefined}
+                                whileTap={hasPrevTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
+                                disabled={!hasPrevTrack || isButtonDisabled}
                             >
                                 <ChevronLeft className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
 
                             <motion.button
-                                className={`p-3 font-thin ${isExpanded ? 'p-5' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePlayPauseToggle();
-                                }}
-                                whileTap={{ scale: 0.9 }}
+                                className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={handlePlayPauseToggle}
+                                whileTap={!isButtonDisabled ? { scale: 0.9 } : undefined}
+                                disabled={isButtonDisabled}
                             >
-                                {isPlaying ? (
+                                {isButtonDisabled ? (
+                                    <Loader2 className={`${isExpanded ? 'w-8 h-8' : 'w-8 h-8'} animate-spin`} />
+                                ) : isPlaying ? (
                                     <Pause className={isExpanded ? 'w-8 h-8' : 'w-8 h-8'} />
                                 ) : (
                                     <Play className={isExpanded ? 'w-8 h-8' : 'w-8 h-8'} />
@@ -170,9 +209,10 @@ const BottomPlayer = () => {
                             </motion.button>
 
                             <motion.button
-                                className={`p-2 rounded-full ${hasNextTrack ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                                onClick={hasNextTrack ? handleNextTrack : undefined}
-                                whileTap={hasNextTrack ? { scale: 0.9 } : undefined}
+                                className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                onClick={hasNextTrack && !isButtonDisabled ? handleNextTrack : undefined}
+                                whileTap={hasNextTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
+                                disabled={!hasNextTrack || isButtonDisabled}
                             >
                                 <ChevronRight className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
@@ -187,6 +227,7 @@ const BottomPlayer = () => {
                                 onValueChange={handleSeek}
                                 aria-label="song progress"
                                 className="flex-grow"
+                                disabled={isButtonDisabled}
                             />
                             <span className="text-sm text-gray-500">{formatTime(duration || 0)}</span>
                         </div>
