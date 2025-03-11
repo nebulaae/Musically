@@ -1,72 +1,83 @@
+// /components/shared/FetchTracks.tsx
 "use client"
 
 import Image from 'next/image';
-import { Play } from 'lucide-react';
-import { BottomPlayer } from '../player/BottomPlayer'; // You can remove this import
 
-interface TrackInterface {
-    tracks: { id: string; title: string; author: string; album: string; cover: string }[];
-    currentTrackIndex: number; // Receive from Page
-    isPlaying: boolean;     // Receive from Page
-    isLoading: boolean;
-    error: string | null;
-    handleTrackSelect: (index: number) => void; // Receive modified handler from Page
-    handlePlayPauseToggle: () => void; // Receive from Page
-    setCurrentTrackIndex: (index: number) => void; // Receive empty function from Page - you might remove this if not needed
-};
+import { memo } from 'react';
+import { Play, Pause } from 'lucide-react';
+import { useAudio } from '@/components/player/AudioContext';
 
-export const FetchTracks = ({
-    tracks,
-    currentTrackIndex,
-    isPlaying,
-    isLoading,
-    error,
-    handleTrackSelect, // Use prop handler
-    handlePlayPauseToggle,
-    setCurrentTrackIndex, // You might remove this if not needed
-}: TrackInterface) => {
-    return (
-        <div>
-            {isLoading ? (
-                <div className="text-center">
-                    <p className="">Загружаем музыку...</p>
-                </div>
-            ) : error ? (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <strong className="font-bold">Ошибка! </strong>
-                    <span className="block sm:inline">{error}</span>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-24">
-                    {tracks.map((track, index) => (
-                        <div
-                            key={track.id}
-                            className="flex flex-col md:flex-row items-center bg-white/40 border border-neutral-200 group rounded-lg overflow-hidden cursor-pointer transition-colors hover:bg-white/20 relative"
-                            onClick={() => handleTrackSelect(index)} // Call the prop handler
-                        >
-                            <Image src={track?.cover || '/default-cover.jpg'} alt="Track Cover" width={128} height={180} />
-                            <div className="p-4 flex flex-col justify-end">
-                                <h3 className="font-semibold text-base truncate">{track.title}</h3>
-                                <p className="text-sm text-gray-400 truncate">{track.author}</p>
-                                <p className="text-sm text-gray-400 truncate">{track.album}</p>
-                            </div>
-                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] flex items-center justify-center">
-                                <Play className='w-5 h-5' />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {/* Remove BottomPlayer from here */}
-            {/* {tracks.length > 0 && (
-                <BottomPlayer
-                    tracks={tracks}
-                    currentTrackIndex={currentTrackIndex}
-                    onTrackIndexChange={setCurrentTrackIndex}
-                    isPlaying={isPlaying}
-                    onPlayPauseToggle={handlePlayPauseToggle}
-                />
-            )} */}
+interface FetchTracksProps {
+  tracks: Track[];
+  isLoading: boolean;
+  error: string | null;
+  handleTrackSelect: (index: number) => void;
+}
+
+export const FetchTracks = memo(({ 
+  tracks, 
+  isLoading, 
+  error, 
+  handleTrackSelect 
+}: FetchTracksProps) => {
+  const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
+
+  // Check if a track is the currently playing track
+  const isTrackPlaying = (track: Track) => {
+    if (!isPlaying) return false;
+    
+    const currentTrack = currentTracks[currentTrackIndex];
+    return currentTrack && currentTrack.id === track.id;
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-4">Loading tracks...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500 py-4">{error}</div>;
+  }
+
+  if (tracks.length === 0) {
+    return <div className="text-center py-4">No tracks found</div>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {tracks.map((track, index) => (
+        <div 
+          key={track.id} 
+          className="flex flex-col md:flex-row items-center bg-white/40 border border-neutral-200 group rounded-lg overflow-hidden cursor-pointer transition-colors hover:bg-white/20 relative"
+          onClick={() => handleTrackSelect(index)}
+        >
+          <div className="relative">
+            <Image
+              src={track.cover || '/default-cover.jpg'}
+              alt={track.title}
+              width={128}
+              height={128}
+            />
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] flex items-center justify-center">
+              {isTrackPlaying(track) ? (
+                <Pause className="w-8 h-8 text-white" />
+              ) : (
+                <Play className="w-8 h-8 text-white" />
+              )}
+            </div>
+          </div>
+          <div className="ml-4">
+            <h3 className="font-medium">{track.title}</h3>
+            <p className="text-sm text-gray-500">{track.author}</p>
+          </div>
+          {isTrackPlaying(track) && (
+            <div className="ml-auto">
+              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            </div>
+          )}
         </div>
-    );
-};
+      ))}
+    </div>
+  );
+});
+
+FetchTracks.displayName = 'FetchTracks';

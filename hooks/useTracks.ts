@@ -1,12 +1,20 @@
-import { useState, useEffect } from "react";
-import { Track } from "@/app/api/tracks/route";
+"use client"
+
+import { useState, useEffect, useCallback } from "react";
+import { useAudio } from "@/components/player/AudioContext";
 
 export const useTracks = (...trackNames: string[]) => {
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const { 
+    playTrackAtIndex,
+    isPlaying,
+    togglePlayPause,
+    currentTime,
+    duration
+  } = useAudio();
 
   useEffect(() => {
     const fetchTracks = async () => {
@@ -46,24 +54,18 @@ export const useTracks = (...trackNames: string[]) => {
   }, [trackNames.join(',')]); // Re-fetch when track list changes
 
   // Handle track selection
-  const handleTrackSelect = (index: number) => {
-    setCurrentTrackIndex(index);
-    setIsPlaying(true);
-  };
-
-  // Toggle play/pause
-  const handlePlayPauseToggle = () => {
-    setIsPlaying(!isPlaying);
-  };
+  const handleTrackSelect = useCallback((index: number) => {
+    playTrackAtIndex(index, tracks);
+  }, [playTrackAtIndex, tracks]);
 
   return {
     tracks,
-    currentTrackIndex,
     isPlaying,
     isLoading,
     error,
+    currentTime,
+    duration,
     handleTrackSelect,
-    handlePlayPauseToggle,
-    setCurrentTrackIndex
+    handlePlayPauseToggle: togglePlayPause
   };
 };

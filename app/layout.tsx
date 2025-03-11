@@ -4,8 +4,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Bottombar } from "@/components/shared/Bottombar";
 import { AppSidebar } from "@/components/shared/AppSidebar";
+import { AudioProvider } from "@/components/player/AudioContext";
 
 import "./globals.css";
+import BottomPlayer from "@/components/player/BottomPlayer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,11 +36,14 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SidebarProvider>
-          <AppSidebar />
-          <main>
-            {children}
-            <Bottombar />
-          </main>
+          <AudioProvider>
+            <AppSidebar />
+            <main>
+              {children}
+              <BottomPlayer />
+              <Bottombar />
+            </main>
+          </AudioProvider>
         </SidebarProvider>
       </body>
     </html>

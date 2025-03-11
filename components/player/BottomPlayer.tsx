@@ -1,16 +1,10 @@
+// /components/player/BottomPlayer.tsx
 "use client"
 
 import Image from 'next/image';
-
-import { Track } from '@/app/api/tracks/route';
 import { motion } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
-import {
-    useState,
-    useRef,
-    useEffect,
-    useCallback
-} from 'react';
+import { useState, useCallback, memo, useEffect } from 'react';
 import {
     Volume1,
     Volume2,
@@ -22,153 +16,84 @@ import {
     Maximize2,
     Minimize2
 } from 'lucide-react';
+import { useAudio } from './AudioContext';
 
-interface BottomPlayerProps {
-    tracks: Track[];
-    currentTrackIndex: number;
-    onTrackIndexChange: (index: number) => void;
-    isPlaying: boolean;
-    onPlayPauseToggle: () => void;
-}
+const BottomPlayer = () => {
+    const {
+        tracks,
+        currentTrackIndex,
+        isPlaying,
+        volume,
+        currentTime,
+        duration,
+        togglePlayPause,
+        nextTrack,
+        prevTrack,
+        setVolume,
+        seekTo,
+        hasNextTrack,
+        hasPrevTrack
+    } = useAudio();
 
-export const BottomPlayer: React.FC<BottomPlayerProps> = ({
-    tracks,
-    currentTrackIndex,
-    onTrackIndexChange,
-    isPlaying,
-    onPlayPauseToggle
-}) => {
-    const [volume, setVolume] = useState<number>(0.5);
-    const [currentTime, setCurrentTime] = useState<number>(0);
-    const [duration, setDuration] = useState<number>(0);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
     const [isPlayerVisible, setIsPlayerVisible] = useState<boolean>(false);
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
-    const currentTrack = tracks[currentTrackIndex];
+    const currentTrack = tracks?.[currentTrackIndex];
 
-    // Handle metadata loading to set duration
-    const handleLoadedMetadata = useCallback(() => {
-        if (audioRef.current) {
-            setDuration(audioRef.current.duration || 0);
-        }
-    }, []);
-
-    // Handle time update to track current playback position
-    const handleTimeUpdate = useCallback(() => {
-        if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime || 0);
-        }
-    }, []);
-
-    // Handle track ending
-    const handleTrackEnded = useCallback(() => {
-        nextTrack();
-    }, [/* nextTrack will be defined below */]);
-
-    // Navigate to next track
-    const nextTrack = useCallback(() => {
-        onTrackIndexChange((currentTrackIndex + 1) % tracks.length);
-        setIsPlayerVisible(true);
-    }, [tracks.length, onTrackIndexChange, currentTrackIndex]);
-
-    // Navigate to previous track
-    const prevTrack = useCallback(() => {
-        onTrackIndexChange((currentTrackIndex - 1 + tracks.length) % tracks.length);
-        setIsPlayerVisible(true);
-    }, [tracks.length, onTrackIndexChange, currentTrackIndex]);
-
-    // Initialize audio and handle track changes
+    // Show player when there are tracks
     useEffect(() => {
-        // Create audio element if it doesn't exist
-        if (!audioRef.current) {
-            audioRef.current = new Audio();
-        }
-
-        const audio = audioRef.current;
-
-        // Set up the audio element
-        audio.src = currentTrack?.src || '';
-        audio.volume = volume;
-
-        // Add event listeners
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('ended', handleTrackEnded);
-
-        // Play if needed
-        if (isPlaying) {
-            audio.play().catch(e => console.error("Play failed:", e));
+        if (tracks && tracks.length > 0) {
+            setIsPlayerVisible(true);
         } else {
-            // Don't reset position when paused
-            // audio.pause() is handled in the isPlaying effect
+            setIsPlayerVisible(false);
         }
-
-        // Clean up function
-        return () => {
-            // Don't pause here to prevent resetting position when changing volume
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('ended', handleTrackEnded);
-        };
-    }, [currentTrackIndex, currentTrack?.src, handleLoadedMetadata, handleTimeUpdate, handleTrackEnded, volume]);
-
-    // Update audio playback state when isPlaying changes
-    useEffect(() => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Play failed:", e));
-                setIsPlayerVisible(true);
-            } else {
-                audioRef.current.pause();
-                // Don't reset current time when pausing
-            }
-        }
-    }, [isPlaying]);
-
-    // Update volume when it changes
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-        }
-    }, [volume]);
+    }, [tracks]);
 
     // Toggle play/pause
-    const togglePlay = () => {
-        onPlayPauseToggle();
-        setIsPlayerVisible(true);
-    };
+    const handlePlayPauseToggle = useCallback(() => {
+        togglePlayPause();
+    }, [togglePlayPause]);
 
     // Handle volume change from slider
-    const handleVolumeChange = (value: number[]) => {
+    const handleVolumeChange = useCallback((value: number[]) => {
         setVolume(value[0] / 100);
-    };
+    }, [setVolume]);
 
     // Handle seeking in the song
-    const handleSeek = (value: number[]) => {
-        if (audioRef.current) {
-            const newTime = (value[0] / 100) * duration;
-            audioRef.current.currentTime = newTime;
-            setCurrentTime(newTime);
-        }
-    };
+    const handleSeek = useCallback((value: number[]) => {
+        const newTime = (value[0] / 100) * duration;
+        seekTo(newTime);
+    }, [duration, seekTo]);
 
     // Format time display (e.g., 01:45)
-    const formatTime = (time: number): string => {
+    const formatTime = useCallback((time: number): string => {
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    };
+    }, []);
 
     // Calculate the current progress percentage
     const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     // Toggle expanded view
-    const toggleExpanded = () => {
-        setIsExpanded(!isExpanded);
-    };
+    const toggleExpanded = useCallback(() => {
+        setIsExpanded(prev => !prev);
+    }, []);
 
-    if (!isPlayerVisible) {
+    // Handle next track click
+    const handleNextTrack = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        nextTrack();
+    }, [nextTrack]);
+
+    // Handle previous track click
+    const handlePrevTrack = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        prevTrack();
+    }, [prevTrack]);
+
+    // Don't render anything if no tracks or player is hidden
+    if (!isPlayerVisible || !tracks || tracks.length === 0 || !currentTrack) {
         return null;
     }
 
@@ -222,12 +147,9 @@ export const BottomPlayer: React.FC<BottomPlayerProps> = ({
                     <div className="flex flex-col items-center justify-center gap-2 w-full">
                         <div className={`flex items-center space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
                             <motion.button
-                                className="p-2 rounded-full hover:bg-gray-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    prevTrack();
-                                }}
-                                whileTap={{ scale: 0.9 }}
+                                className={`p-2 rounded-full ${hasPrevTrack ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                onClick={hasPrevTrack ? handlePrevTrack : undefined}
+                                whileTap={hasPrevTrack ? { scale: 0.9 } : undefined}
                             >
                                 <ChevronLeft className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
@@ -236,7 +158,7 @@ export const BottomPlayer: React.FC<BottomPlayerProps> = ({
                                 className={`p-3 font-thin ${isExpanded ? 'p-5' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    togglePlay();
+                                    handlePlayPauseToggle();
                                 }}
                                 whileTap={{ scale: 0.9 }}
                             >
@@ -248,12 +170,9 @@ export const BottomPlayer: React.FC<BottomPlayerProps> = ({
                             </motion.button>
 
                             <motion.button
-                                className="p-2 rounded-full hover:bg-gray-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    nextTrack();
-                                }}
-                                whileTap={{ scale: 0.9 }}
+                                className={`p-2 rounded-full ${hasNextTrack ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                onClick={hasNextTrack ? handleNextTrack : undefined}
+                                whileTap={hasNextTrack ? { scale: 0.9 } : undefined}
                             >
                                 <ChevronRight className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
@@ -305,3 +224,5 @@ export const BottomPlayer: React.FC<BottomPlayerProps> = ({
         </motion.footer>
     );
 };
+
+export default memo(BottomPlayer);
