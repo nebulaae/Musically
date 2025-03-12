@@ -1,6 +1,7 @@
 "use client"
 
 import Image from 'next/image';
+
 import { motion } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
@@ -13,7 +14,6 @@ import {
     ChevronRight,
     Play,
     Pause,
-    Maximize2,
     Minimize2,
     Loader2,
     Repeat,
@@ -182,7 +182,7 @@ const BottomPlayer = () => {
 
                 {/* Track Info */}
                 <div
-                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : ''}`}
+                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : ''}`}
                     onClick={isExpanded ? undefined : toggleExpanded}
                 >
                     <Image
@@ -205,10 +205,10 @@ const BottomPlayer = () => {
                 {/* Player Controls - Middle */}
                 <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row'} md:flex-1 justify-center`}>
                     <div className="flex flex-col items-center justify-center gap-2 w-full">
-                        <div className={`flex items-center space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
+                        <div className={`flex items-center space-x-3 md:space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
                             {/* Shuffle Button */}
                             <motion.button
-                                className={`hidden md:flex p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer text-purple-800 hover:bg-gray-100' : 'cursor-pointer hover:bg-gray-100'}`}
+                                className={`p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer text-purple-800 hover:bg-gray-100' : 'cursor-pointer hover:bg-gray-100'}`}
                                 onClick={handleShuffleToggle}
                                 whileTap={hasShuffle ? { scale: 0.9 } : undefined}
                                 disabled={!hasShuffle}
@@ -255,7 +255,7 @@ const BottomPlayer = () => {
                             {/* Repeat Button */}
                             <motion.div whileTap={{ scale: 0.9 }}>
                                 <Toggle
-                                    className={`hidden md:flex rounded-full`}
+                                    className={`rounded-full`}
                                     pressed={repeatMode}
                                     onPressedChange={() => toggleRepeatMode()}
                                     size="lg"
@@ -265,7 +265,7 @@ const BottomPlayer = () => {
                             </motion.div>
                         </div>
                         {/* Song Progress Slider */}
-                        <div className="flex items-center w-full max-w-[500px] px-4 space-x-2">
+                        <div className="flex items-center w-full max-w-[500px] space-x-2">
                             <span className="text-sm text-gray-500">{formatTime(currentTime)}</span>
                             <Slider
                                 value={[progressPercentage]}
@@ -292,18 +292,6 @@ const BottomPlayer = () => {
                         aria-label="volume"
                         className={`${isExpanded ? 'w-full' : 'w-24'} flex-grow md:flex-grow-0`}
                     />
-                    {!isExpanded && (
-                        <motion.button
-                            className="p-2 rounded-full hover:bg-gray-100"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpanded();
-                            }}
-                            whileTap={{ scale: 0.9 }}
-                        >
-                            <Maximize2 />
-                        </motion.button>
-                    )}
                 </div>
             </div>
         </motion.footer>

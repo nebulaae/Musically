@@ -1,13 +1,15 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import BottomPlayer from "@/components/player/BottomPlayer";
+
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { AuthGuard } from "@/components/shared/AuthGuard";
 import { Bottombar } from "@/components/shared/Bottombar";
 import { AppSidebar } from "@/components/shared/AppSidebar";
 import { AudioProvider } from "@/components/player/AudioContext";
 
 import "./globals.css";
-import BottomPlayer from "@/components/player/BottomPlayer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,13 +39,15 @@ export default async function RootLayout({
       >
         <SidebarProvider>
           <AudioProvider>
-            <AppSidebar />
+            <AuthGuard>
+              <AppSidebar />
               {children}
-            <BottomPlayer />
-            <Bottombar />
+              <BottomPlayer />
+              <Bottombar />
+            </AuthGuard>
           </AudioProvider>
         </SidebarProvider>
       </body>
     </html>
   );
-}
+};

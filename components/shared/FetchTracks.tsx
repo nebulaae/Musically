@@ -43,11 +43,11 @@ export const FetchTracks = memo(({
   }
 
   return (
-    <div className="flex flex-row overflow-x-auto overflow-y-hidden sm:gap-4 gap-2 w-full">
+    <div className="flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full">
       {tracks.map((track, index) => (
         <div
           key={track.id}
-          className="relative flex flex-col items-start group p-2 sm:p-4 cursor-pointer min-w-[150px] sm:min-w-[200px]"
+          className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
           onClick={() => handleTrackSelect(index)}
         >
           <div className="relative w-full">

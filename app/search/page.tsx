@@ -30,14 +30,17 @@ const SearchPage = () => {
 
     return (
         <section className="flex flex-col items-center w-full px-4 pb-32">
-            <h1 className="mt-18 text-3xl sm:text-5xl font-bold bg-gradient-to-r from-fuchsia-600 to-pink-600 bg-clip-text text-transparent mb-6">
+            <h1 className="mt-18 text-3xl sm:text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent mb-6">
                 Ищите песни
             </h1>
             <div className="flex flex-col mt-6 w-full max-w-[600px] mb-8 relative">
                 <Input
                     type="text"
                     placeholder="Поиск песен..."
-                    className="rounded-full py-6 w-full pl-12 pr-12"
+                    className={`
+                        rounded-full py-6 w-full pl-12 pr-12 
+                        ${isFocused ? 'bg-purple shadow-2xl shadow-purple-500/50' : ''}
+                    `}
                     onChange={handleSearchChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
@@ -58,7 +61,7 @@ const SearchPage = () => {
             <div className="w-full max-w-[1200px]">
                 {searchQuery ? (
                     <div className="mb-6">
-                        <h2 className="title-text">Результаты поиска</h2>
+                        <h2 className="title-text mb-8">Результаты поиска</h2>
                         <FetchTracks
                             tracks={searchResults}
                             isLoading={isLoading}
@@ -68,7 +71,7 @@ const SearchPage = () => {
                     </div>
                 ) : (
                     <div className="mb-6">
-                        <h2 className="title-text">Все песни</h2>
+                        <h2 className="title-text mb-8">Все песни</h2>
                         <FetchTracks
                             tracks={searchResults}
                             isLoading={isLoading}
