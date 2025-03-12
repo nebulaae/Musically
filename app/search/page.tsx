@@ -58,22 +58,17 @@ const SearchPage = () => {
             <div className="w-full max-w-[1200px]">
                 {searchQuery ? (
                     <div className="mb-6">
-                        <h2 className="text-xl font-semibold mb-4">Результаты поиска</h2>
+                        <h2 className="title-text">Результаты поиска</h2>
                         <FetchTracks
                             tracks={searchResults}
                             isLoading={isLoading}
                             error={error}
                             handleTrackSelect={handleTrackSelect}
                         />
-                        {!isLoading && searchResults.length === 0 && (
-                            <div className="text-center py-8 text-neutral-500">
-                                Песни не найдены
-                            </div>
-                        )}
                     </div>
                 ) : (
                     <div className="mb-6">
-                        <h2 className="text-xl font-semibold mb-4">Все песни</h2>
+                        <h2 className="title-text">Все песни</h2>
                         <FetchTracks
                             tracks={searchResults}
                             isLoading={isLoading}

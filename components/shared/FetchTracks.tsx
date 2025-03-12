@@ -5,7 +5,6 @@ import Image from 'next/image';
 
 import { memo } from 'react';
 import { Play, Pause } from 'lucide-react';
-import { SoundWave } from '../ui/special/SoundWave';
 import { useAudio } from '@/components/player/AudioContext';
 
 interface FetchTracksProps {
@@ -44,14 +43,14 @@ export const FetchTracks = memo(({
   }
 
   return (
-    <div className="flex flex-row overflow-x-auto overflow-y-hidden">
+    <div className="flex flex-row overflow-x-auto overflow-y-hidden sm:gap-4 gap-2 w-full">
       {tracks.map((track, index) => (
         <div
           key={track.id}
-          className="relative flex flex-col items-start group p-4 cursor-pointer transition-colors hover:bg-white/20"
+          className="relative flex flex-col items-start group p-2 sm:p-4 cursor-pointer min-w-[150px] sm:min-w-[200px]"
           onClick={() => handleTrackSelect(index)}
         >
-          <div className="relative">
+          <div className="relative w-full">
             <Image
               src={track.cover || '/default-cover.jpg'}
               alt={track.title}
@@ -59,7 +58,7 @@ export const FetchTracks = memo(({
               height={200}
               className="rounded-lg"
             />
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] flex items-center justify-center">
+            <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
               {isTrackPlaying(track) ? (
                 <Pause className="w-8 h-8 text-white" />
               ) : (
@@ -67,7 +66,7 @@ export const FetchTracks = memo(({
               )}
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-2 sm:mt-4 text-start w-full">
             <h3 className="font-semibold">{track.title}</h3>
             <p className="text-sm text-gray-500">{track.author}</p>
           </div>

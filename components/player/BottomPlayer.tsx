@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
+import { Toggle } from "@/components/ui/toggle";
 import { useState, useCallback, memo, useEffect } from 'react';
 import {
     Volume1,
@@ -14,7 +15,9 @@ import {
     Pause,
     Maximize2,
     Minimize2,
-    Loader2
+    Loader2,
+    Repeat,
+    Shuffle
 } from 'lucide-react';
 import { useAudio } from './AudioContext';
 
@@ -32,7 +35,11 @@ const BottomPlayer = () => {
         setVolume,
         seekTo,
         hasNextTrack,
-        hasPrevTrack
+        hasPrevTrack,
+        shuffleMode,
+        toggleShuffleMode,
+        repeatMode,
+        toggleRepeatMode
     } = useAudio();
 
     const [isPlayerVisible, setIsPlayerVisible] = useState<boolean>(false);
@@ -40,6 +47,7 @@ const BottomPlayer = () => {
     const [isButtonDisabled, setIsButtonDisabled] = useState<boolean>(false);
 
     const currentTrack = tracks?.[currentTrackIndex];
+    const hasShuffle = tracks && tracks.length > 1;
 
     // Show player when there are tracks
     useEffect(() => {
@@ -53,13 +61,13 @@ const BottomPlayer = () => {
     // Toggle play/pause with button disable safety
     const handlePlayPauseToggle = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        
+
         if (isButtonDisabled) return;
-        
+
         setIsButtonDisabled(true);
-        
+
         try {
-            await togglePlayPause();
+            togglePlayPause();
         } catch (error) {
             console.error("Error toggling play/pause:", error);
         } finally {
@@ -97,13 +105,13 @@ const BottomPlayer = () => {
     // Handle next track click with button disable safety
     const handleNextTrack = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        
+
         if (isButtonDisabled || !hasNextTrack) return;
-        
+
         setIsButtonDisabled(true);
-        
+
         try {
-            await nextTrack();
+            nextTrack();
         } catch (error) {
             console.error("Error navigating to next track:", error);
         } finally {
@@ -115,13 +123,13 @@ const BottomPlayer = () => {
     // Handle previous track click with button disable safety
     const handlePrevTrack = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        
+
         if (isButtonDisabled || !hasPrevTrack) return;
-        
+
         setIsButtonDisabled(true);
-        
+
         try {
-            await prevTrack();
+            prevTrack();
         } catch (error) {
             console.error("Error navigating to previous track:", error);
         } finally {
@@ -129,6 +137,20 @@ const BottomPlayer = () => {
             setTimeout(() => setIsButtonDisabled(false), 300);
         }
     }, [prevTrack, hasPrevTrack, isButtonDisabled]);
+
+    // Handle shuffle toggle
+    const handleShuffleToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (hasShuffle) {
+            toggleShuffleMode();
+        }
+    }, [toggleShuffleMode, hasShuffle]);
+
+    // Handle repeat toggle
+    const handleRepeatToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleRepeatMode();
+    }, [toggleRepeatMode]);
 
     // Don't render anything if no tracks or player is hidden
     if (!isPlayerVisible || !tracks || tracks.length === 0 || !currentTrack) {
@@ -166,9 +188,9 @@ const BottomPlayer = () => {
                     <Image
                         src={currentTrack?.cover || '/default-cover.jpg'}
                         alt="Track Cover"
-                        width={isExpanded ? 300 : 36}
-                        height={isExpanded ? 300 : 36}
-                        className={`rounded-sm ${isExpanded ? 'rounded-lg shadow-lg' : ''}`}
+                        width={isExpanded ? 300 : 48}
+                        height={isExpanded ? 300 : 48}
+                        className={`rounded-sm ${isExpanded ? 'rounded-xl shadow-xl' : ''}`}
                     />
                     <div className={`${isExpanded ? 'text-center' : ''}`}>
                         <h4 className={`font-semibold ${isExpanded ? 'text-xl' : 'truncate max-w-[100px]'}`}>
@@ -184,8 +206,19 @@ const BottomPlayer = () => {
                 <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row'} md:flex-1 justify-center`}>
                     <div className="flex flex-col items-center justify-center gap-2 w-full">
                         <div className={`flex items-center space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
+                            {/* Shuffle Button */}
                             <motion.button
-                                className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                className={`hidden md:flex p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer text-purple-800 hover:bg-gray-100' : 'cursor-pointer hover:bg-gray-100'}`}
+                                onClick={handleShuffleToggle}
+                                whileTap={hasShuffle ? { scale: 0.9 } : undefined}
+                                disabled={!hasShuffle}
+                            >
+                                <Shuffle className={`font-thin w-5 h-5`} />
+                            </motion.button>
+
+                            {/* Previous Track Button */}
+                            <motion.button
+                                className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                 onClick={hasPrevTrack && !isButtonDisabled ? handlePrevTrack : undefined}
                                 whileTap={hasPrevTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
                                 disabled={!hasPrevTrack || isButtonDisabled}
@@ -193,8 +226,9 @@ const BottomPlayer = () => {
                                 <ChevronLeft className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
 
+                            {/* Play/Pause Button */}
                             <motion.button
-                                className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                 onClick={handlePlayPauseToggle}
                                 whileTap={!isButtonDisabled ? { scale: 0.9 } : undefined}
                                 disabled={isButtonDisabled}
@@ -208,14 +242,27 @@ const BottomPlayer = () => {
                                 )}
                             </motion.button>
 
+                            {/* Next Track Button */}
                             <motion.button
-                                className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                                className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                 onClick={hasNextTrack && !isButtonDisabled ? handleNextTrack : undefined}
                                 whileTap={hasNextTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
                                 disabled={!hasNextTrack || isButtonDisabled}
                             >
                                 <ChevronRight className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
                             </motion.button>
+
+                            {/* Repeat Button */}
+                            <motion.div whileTap={{ scale: 0.9 }}>
+                                <Toggle
+                                    className={`hidden md:flex rounded-full`}
+                                    pressed={repeatMode}
+                                    onPressedChange={() => toggleRepeatMode()}
+                                    size="lg"
+                                >
+                                    <Repeat className={`font-thin w-10 h-10`} />
+                                </Toggle>
+                            </motion.div>
                         </div>
                         {/* Song Progress Slider */}
                         <div className="flex items-center w-full max-w-[500px] px-4 space-x-2">
@@ -245,10 +292,7 @@ const BottomPlayer = () => {
                         aria-label="volume"
                         className={`${isExpanded ? 'w-full' : 'w-24'} flex-grow md:flex-grow-0`}
                     />
-                </div>
-
-                {!isExpanded && (
-                    <div className="hidden md:flex items-center">
+                    {!isExpanded && (
                         <motion.button
                             className="p-2 rounded-full hover:bg-gray-100"
                             onClick={(e) => {
@@ -259,8 +303,8 @@ const BottomPlayer = () => {
                         >
                             <Maximize2 />
                         </motion.button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </motion.footer>
     );

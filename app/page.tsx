@@ -10,7 +10,7 @@ const Page = () => {
     return (
         <section className="flex flex-col w-full">
             <div className="p-4">
-                <h1 className="text-2xl font-bold mb-6">Lil Tecca</h1>
+                <h1 className="title-text">Lil Tecca</h1>
                 <FetchTracks
                     tracks={collection.tracks}
                     isLoading={collection.isLoading}
@@ -18,7 +18,7 @@ const Page = () => {
                     handleTrackSelect={collection.handleTrackSelect}
                 />
 
-                <h1 className="text-2xl font-bold mb-6 mt-8">Playboi Carti</h1>
+                <h1 className="title-text">Playboi Carti</h1>
                 <FetchTracks
                     tracks={cartiCollection.tracks}
                     isLoading={cartiCollection.isLoading}

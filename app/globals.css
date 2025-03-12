@@ -121,7 +121,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50 selection:bg-purple-400/20 selection:text-purple-800;
   }
 
   ::-webkit-scrollbar {
@@ -141,5 +141,9 @@
   .glassmorphism {
     background: inherit;
     backdrop-filter: blur(18px);
+  }
+
+  .title-text {
+    @apply text-2xl font-bold mb-6;
   }
 }
