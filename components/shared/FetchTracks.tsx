@@ -2,19 +2,18 @@
 
 import Image from 'next/image';
 
-import { memo, useEffect } from 'react';
-import { Button } from '../ui/button';
-import { Play, Pause, Music, Heart } from 'lucide-react';
-import { useMusicActions } from '@/hooks/useMusicActions';
+import { memo, useCallback } from 'react';
+import { Play, Pause, Music } from 'lucide-react';
 import { useAudio } from '@/components/player/AudioContext';
+import { LikeButton } from '@/components/shared/LikeButton';
 
 interface FetchTracksProps {
   tracks: Track[];
   isLoading: boolean;
   error: string | null;
   handleTrackSelect: (index: number) => void;
-  layout?: 'blocks' | 'list'; // New prop for different layouts
-  variant?: 'flex' | 'grid'; // New prop for flex or grid layout
+  layout?: 'blocks' | 'list';
+  variant?: 'flex' | 'grid';
 }
 
 export const FetchTracks = memo(({
@@ -22,10 +21,17 @@ export const FetchTracks = memo(({
   isLoading,
   error,
   handleTrackSelect,
-  layout = 'blocks', // Default to blocks layout
-  variant = 'flex' // Default to flex variant
+  layout = 'blocks',
+  variant = 'flex'
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
+
+  // Format time display (e.g., 01:45)
+  const formatTime = useCallback((time: number): string => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, []);
 
   // Check if a track is the currently playing track
   const isTrackPlaying = (track: Track) => {
@@ -58,9 +64,11 @@ export const FetchTracks = memo(({
           <div
             key={track.id}
             className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
-            onClick={() => handleTrackSelect(index)}
           >
-            <div className="relative w-full">
+            <div
+              className="relative w-full"
+              onClick={() => handleTrackSelect(index)}
+            >
               <Image
                 src={track.cover || '/default-cover.jpg'}
                 alt={track.title}
@@ -75,13 +83,13 @@ export const FetchTracks = memo(({
                   <Play className="w-8 h-8 text-white" />
                 )}
               </div>
-
-              {/* Like Button Overlay */}
-              <LikeButton trackId={track.id} className="absolute bottom-2 right-2" />
             </div>
-            <div className="mt-2 sm:mt-4 text-start w-full">
-              <h3 className="font-semibold">{track.title}</h3>
-              <p className="text-sm text-gray-500">{track.author}</p>
+            <div className="mt-2 sm:mt-4 text-start w-full flex items-center justify-between">
+              <div onClick={() => handleTrackSelect(index)}>
+                <h3 className="font-semibold">{track.title}</h3>
+                <p className="text-sm text-gray-500">{track.author}</p>
+              </div>
+              <LikeButton trackId={track.id} size="md" className="ml-2" />
             </div>
           </div>
         ))}
@@ -96,9 +104,11 @@ export const FetchTracks = memo(({
         <div
           key={track.id}
           className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer ${isTrackPlaying(track) ? 'bg-gray-50' : ''}`}
-          onClick={() => handleTrackSelect(index)}
         >
-          <div className="flex items-center flex-1 min-w-0">
+          <div
+            className="flex items-center flex-1 min-w-0"
+            onClick={() => handleTrackSelect(index)}
+          >
             <div className="relative flex-shrink-0 w-12 h-12 mr-3">
               {track.cover ? (
                 <Image
@@ -113,7 +123,6 @@ export const FetchTracks = memo(({
                   <Music className="w-6 h-6 text-gray-500" />
                 </div>
               )}
-
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
                 {isTrackPlaying(track) ? (
                   <Pause className="w-6 h-6 text-white" />
@@ -130,38 +139,15 @@ export const FetchTracks = memo(({
           </div>
 
           <div className="flex items-center space-x-4">
-            <LikeButton trackId={track.id} />
             {isTrackPlaying(track) ? (
               <span className="text-xs font-medium text-green-600 w-16 text-right">Playing</span>
             ) : (
-              <span className="text-xs text-gray-500 w-16 text-right">
-                { } {/* Placeholder duration */}
-              </span>
+              <span className="text-xs text-gray-500 w-16 text-right"></span>
             )}
+            <LikeButton trackId={track.id} size="md" />
           </div>
         </div>
       ))}
     </div>
   );
 });
-
-const LikeButton = ({ trackId, className = '' }: { trackId: string, className?: string }) => {
-  const { isLiked, toggleLike, refreshLikedSongs } = useMusicActions(trackId);
-
-  const handleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await toggleLike();
-    // Force a refresh of all liked songs to update UI everywhere
-    await refreshLikedSongs();
-  };
-
-  return (
-    <button
-      className={`p-2 rounded-full bg-white/80 hover:bg-white ${isLiked ? 'text-red-500' : 'text-gray-600'} ${className}`}
-      onClick={handleClick}
-      aria-label={isLiked ? 'Unlike' : 'Like'}
-    >
-      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-    </button>
-  );
-};

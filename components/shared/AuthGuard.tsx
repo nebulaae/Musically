@@ -51,13 +51,13 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                <div className="text-red-500 mb-4">Error initializing the app</div>
+            <div className="absolute flex flex-col items-center justify-center w-full h-full bg-white p-4">
+                <div className="text-red-500 mb-4">Ошибка при инициализации приложения</div>
                 <button
                     onClick={() => window.location.reload()}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg"
                 >
-                    Retry
+                    Обновить
                 </button>
             </div>
         );

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
-import { useState, useCallback, memo, useEffect } from 'react';
+import { LikeButton } from '@/components/shared/LikeButton';
 import {
     Volume1,
     Volume2,
@@ -19,7 +19,15 @@ import {
     Repeat,
     Shuffle
 } from 'lucide-react';
+
+import {
+    useState,
+    useCallback,
+    memo,
+    useEffect
+} from 'react';
 import { useAudio } from './AudioContext';
+
 
 const BottomPlayer = () => {
     const {
@@ -192,13 +200,22 @@ const BottomPlayer = () => {
                         height={isExpanded ? 300 : 48}
                         className={`rounded-sm ${isExpanded ? 'rounded-xl shadow-xl' : ''}`}
                     />
-                    <div className={`${isExpanded ? 'text-center' : ''}`}>
-                        <h4 className={`font-semibold ${isExpanded ? 'text-xl' : 'truncate max-w-[100px]'}`}>
-                            {currentTrack?.title || "No Track"}
-                        </h4>
-                        <p className={`text-sm text-gray-500 ${isExpanded ? '' : 'truncate max-w-[200px] md:max-w-full'}`}>
-                            {currentTrack?.author || "Unknown Artist"}
-                        </p>
+                    <div className={`flex items-center ${isExpanded ? 'flex-col text-center' : ''}`}>
+                        <div>
+                            <h4 className={`font-semibold ${isExpanded ? 'text-xl' : 'truncate max-w-[100px]'}`}>
+                                {currentTrack?.title || "No Track"}
+                            </h4>
+                            <p className={`text-sm text-gray-500 ${isExpanded ? '' : 'truncate max-w-[200px] md:max-w-full'}`}>
+                                {currentTrack?.author || "Unknown Artist"}
+                            </p>
+                        </div>
+                        {/* Like Button for Bottom Player */}
+                        <div className={`${isExpanded ? 'mt-4' : 'ml-3'}`}>
+                            <LikeButton
+                                trackId={currentTrack?.id || ''}
+                                size={isExpanded ? 'lg' : 'md'}
+                            />
+                        </div>
                     </div>
                 </div>
 

@@ -49,7 +49,7 @@ const SearchPage = () => {
                     <Search />
                 </div>
                 {searchQuery && (
-                    <button 
+                    <button
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                         onClick={clearSearch}
                     >
@@ -67,6 +67,7 @@ const SearchPage = () => {
                             isLoading={isLoading}
                             error={error}
                             handleTrackSelect={handleTrackSelect}
+                            layout="list"
                         />
                     </div>
                 ) : (
@@ -77,6 +78,7 @@ const SearchPage = () => {
                             isLoading={isLoading}
                             error={error}
                             handleTrackSelect={handleTrackSelect}
+                            layout="list"
                         />
                     </div>
                 )}

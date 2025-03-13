@@ -1,504 +1,556 @@
-/api/tracks/route.ts
-import path from 'path';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import * as NodeID3 from 'node-id3';
-
-import { v4 as uuidv4 } from 'uuid';
-import { NextRequest, NextResponse } from 'next/server';
-
-async function fileHash(filePath: string): Promise<string> {
-  const fileBuffer = await fs.readFile(filePath);
-  const hashSum = crypto.createHash('sha256');
-  hashSum.update(fileBuffer);
-  return hashSum.digest('hex');
+db/models/model.tracks.ts
+export interface Track {
+    id: string;
+    title: string;
+    author?: string;
+    album?: string;
+    src: string;
+    cover?: string;
+    type?: string;
+}
+db/models/model.user.ts
+export interface User {
+    id: string;
+    name: string;
+    likedSongs: string[]; // Array of track IDs
+    playlists: Playlist[];
+    onboarding: boolean;
 }
 
-const coverCache: { [key: string]: string } = {};
-
-async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
-  if (!coverCache[hash]) {
-    await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
-    coverCache[hash] = `/covers/${coverFilename}`;
-  }
-  return coverCache[hash];
+export interface Playlist {
+    id: string;
+    name: string;
+    tracks: string[]; // Array of track IDs
+    createdAt: Date;
 }
+db/actions/action.tracks.ts
+import db from '../index';
+import { Track } from '../models/model.tracks';
 
-export async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
-  const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
-
-  try {
-    const filenames = await fs.readdir(tracksDirectory);
-    const tracksData: Track[] = [];
-
-    // Filter filenames if requestedTracks is provided
-    const filteredFilenames = requestedTracks && requestedTracks.length > 0
-      ? filenames.filter(filename => requestedTracks.includes(filename))
-      : filenames;
-
-    for (const filename of filteredFilenames) {
-      if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
-        const filePath = path.join(tracksDirectory, filename);
-        const id = uuidv4();
-        const fileType = path.extname(filename).toLowerCase().substring(1);
-        let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
-        let author: string | undefined;
-        let album: string | undefined;
-        let cover: string | undefined = '/default-cover.jpg';
-
-        if (path.extname(filename).toLowerCase() === '.mp3') {
-          try {
-            const tags = NodeID3.read(filePath);
-            if (tags) {
-              title = tags.title || title;
-              author = tags.artist || tags.composer;
-              album = tags.album;
-
-              // Handle cover image from ID3 tags
-              if (
-                tags.image &&
-                typeof tags.image !== 'string' &&
-                tags.image.imageBuffer
-              ) {
-                try {
-                  const hash = await fileHash(filePath);
-                  const coverFilename = `${hash}-cover.jpg`;
-                  const coverPath = path.join(process.cwd(), 'public', 'covers');
-                  await fs.mkdir(coverPath, { recursive: true });
-
-                  if (!coverCache[hash]) {
-                    // Save the cover to public folder for serving only if it's not in the cache
-                    try {
-                      cover = await getCoverFromCache(hash, coverFilename, tags.image.imageBuffer);
-                    } catch (err) {
-                      console.error(`Error saving cover image for ${filename}:`, err);
-                      cover = `/default-cover.png`;
-                    }
-                  } else {
-                    cover = coverCache[hash];
-                  }
-                } catch (err) {
-                  console.error(`Error saving cover image for ${filename}:`, err);
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`Error reading ID3 tags from ${filename}:`, error);
-          }
+// Fetch tracks from the API and store them in the database
+export async function syncTracksFromAPI(): Promise<Track[]> {
+    try {
+        // Fetch tracks from the API
+        const response = await fetch('/api/tracks');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch tracks: ${response.status}`);
         }
 
-        tracksData.push({
-          id: id,
-          title: title,
-          author: author || 'Unknown Artist',
-          album: album || 'Unknown Album',
-          src: `/tracks/${filename}`,
-          cover: cover,
-          type: fileType,
+        const tracks = await response.json();
+
+        // Store tracks in the database
+        await db.transaction('rw', db.tracks, async () => {
+            // Clear existing tracks
+            await db.tracks.clear();
+            // Add new tracks
+            await db.tracks.bulkAdd(tracks);
         });
-      }
+
+        return tracks;
+    } catch (error) {
+        console.error('Error syncing tracks:', error);
+        throw error;
+    }
+}
+
+// Get all tracks from the database
+export async function getAllTracks(): Promise<Track[]> {
+    return await db.tracks.toArray();
+}
+
+// Get a track by ID
+export async function getTrackById(id: string): Promise<Track | undefined> {
+    return await db.tracks.get(id);
+}
+
+// Get tracks by IDs
+export async function getTracksByIds(ids: string[]): Promise<Track[]> {
+    return await db.tracks.where('id').anyOf(ids).toArray();
+}
+
+// Search tracks by title or author
+export async function searchTracks(query: string): Promise<Track[]> {
+    const lowerQuery = query.toLowerCase();
+
+    return await db.tracks.filter((track: Track) => {
+        const titleMatch = track.title.toLowerCase().includes(lowerQuery);
+        const authorMatch = track.author ? track.author.toLowerCase().includes(lowerQuery) : false;
+
+        return titleMatch || authorMatch;
+    }).toArray();
+}
+db/actions/action.user.ts
+import { v4 as uuidv4 } from 'uuid';
+import db from '../index';
+import { User, Playlist } from '../models/model.user';
+import { Track } from '../models/model.tracks';
+import { getTracksByIds } from './action.tracks';
+
+// Get the current user (create one if it doesn't exist)
+export async function getCurrentUser(): Promise<User> {
+    const users = await db.users.toArray();
+
+    if (users.length === 0) {
+        // Create a default user if none exists
+        const newUser: User = {
+            id: uuidv4(),
+            name: 'User',
+            likedSongs: [],
+            playlists: [],
+            onboarding: false
+        };
+
+        await db.users.add(newUser);
+        return newUser;
     }
 
-    return tracksData;
-  } catch (error) {
-    console.error("Error reading tracks directory:", error);
-    return [];
-  }
+    // Return the first user (we're only supporting one user in this simple app)
+    return users[0];
 }
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const requestedTracks = searchParams.getAll('tracks');
+// Update user name and complete onboarding
+export async function completeOnboarding(name: string): Promise<User> {
+    const user = await getCurrentUser();
 
-  const tracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
-  return NextResponse.json(tracks);
+    const updatedUser: User = {
+        ...user,
+        name,
+        onboarding: true
+    };
+
+    await db.users.update(user.id, {
+        name: updatedUser.name,
+        onboarding: updatedUser.onboarding
+    });
+    return updatedUser;
 }
 
-/components/player/AudioContext.tsx
+// Check if user has completed onboarding
+export async function hasCompletedOnboarding(): Promise<boolean> {
+    const user = await getCurrentUser();
+    return user.onboarding;
+}
+
+// Add a track to liked songs
+export async function likeSong(trackId: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    if (!user.likedSongs.includes(trackId)) {
+        const updatedUser: User = {
+            ...user,
+            likedSongs: [...user.likedSongs, trackId]
+        };
+
+        await db.users.update(user.id, {
+            likedSongs: updatedUser.likedSongs
+        });
+    }
+}
+
+// Remove a track from liked songs
+export async function unlikeSong(trackId: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    const updatedUser: User = {
+        ...user,
+        likedSongs: user.likedSongs.filter(id => id !== trackId)
+    };
+
+    await db.users.update(user.id, {
+        likedSongs: updatedUser.likedSongs
+    });
+}
+
+// Check if a song is liked
+export async function isSongLiked(trackId: string): Promise<boolean> {
+    const user = await getCurrentUser();
+    return user.likedSongs.includes(trackId);
+}
+
+// Get all liked songs
+export async function getLikedSongs(): Promise<Track[]> {
+    const user = await getCurrentUser();
+    return await getTracksByIds(user.likedSongs);
+}
+
+// Create a new playlist
+export async function createPlaylist(name: string): Promise<Playlist> {
+    const user = await getCurrentUser();
+
+    const newPlaylist: Playlist = {
+        id: uuidv4(),
+        name,
+        tracks: [],
+        createdAt: new Date()
+    };
+
+    const updatedUser: User = {
+        ...user,
+        playlists: [...user.playlists, newPlaylist]
+    };
+
+    await db.users.update(user.id, {
+        playlists: updatedUser.playlists
+    });
+    return newPlaylist;
+}
+
+// Add a track to a playlist
+export async function addTrackToPlaylist(playlistId: string, trackId: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    const updatedPlaylists = user.playlists.map(playlist => {
+        if (playlist.id === playlistId && !playlist.tracks.includes(trackId)) {
+            return {
+                ...playlist,
+                tracks: [...playlist.tracks, trackId]
+            };
+        }
+        return playlist;
+    });
+
+    const updatedUser: User = {
+        ...user,
+        playlists: updatedPlaylists
+    };
+
+    await db.users.update(user.id, {
+        playlists: updatedUser.playlists
+    });
+}
+
+// Remove a track from a playlist
+export async function removeTrackFromPlaylist(playlistId: string, trackId: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    const updatedPlaylists = user.playlists.map(playlist => {
+        if (playlist.id === playlistId) {
+            return {
+                ...playlist,
+                tracks: playlist.tracks.filter(id => id !== trackId)
+            };
+        }
+        return playlist;
+    });
+
+    const updatedUser: User = {
+        ...user,
+        playlists: updatedPlaylists
+    };
+
+    await db.users.update(user.id, {
+        playlists: updatedUser.playlists
+    });
+}
+
+// Delete a playlist
+export async function deletePlaylist(playlistId: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    const updatedUser: User = {
+        ...user,
+        playlists: user.playlists.filter(playlist => playlist.id !== playlistId)
+    };
+
+    await db.users.update(user.id, {
+        playlists: updatedUser.playlists
+    });
+}
+
+// Get a playlist by ID with its tracks
+export async function getPlaylistWithTracks(playlistId: string): Promise<{ playlist: Playlist, tracks: Track[] } | null> {
+    const user = await getCurrentUser();
+
+    const playlist = user.playlists.find(p => p.id === playlistId);
+    if (!playlist) return null;
+
+    const tracks = await getTracksByIds(playlist.tracks);
+
+    return { playlist, tracks };
+}
+
+// Get all playlists
+export async function getAllPlaylists(): Promise<Playlist[]> {
+    const user = await getCurrentUser();
+    return user.playlists;
+}
+hooks/useDbInit.ts
+import { useState, useEffect } from 'react';
+import { syncTracksFromAPI } from '@/db/actions/action.tracks';
+import { getCurrentUser } from '@/db/actions/action.user';
+
+export function useDbInit() {
+    const [isInitializing, setIsInitializing] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
+
+    useEffect(() => {
+        async function initializeDatabase() {
+            try {
+                // Initialize the user (creates one if it doesn't exist)
+                await getCurrentUser();
+
+                // Fetch tracks from API and store them in the database
+                await syncTracksFromAPI();
+
+                setIsInitializing(false);
+            } catch (err) {
+                console.error('Error initializing database:', err);
+                setError(err instanceof Error ? err : new Error('Unknown error during database initialization'));
+                setIsInitializing(false);
+            }
+        }
+
+        initializeDatabase();
+    }, []);
+
+    return { isInitializing, error };
+}
+hooks/useMusicActions.ts
+import { useState, useEffect, useCallback } from 'react';
+import {
+    isSongLiked,
+    likeSong,
+    unlikeSong,
+    createPlaylist,
+    addTrackToPlaylist,
+    getAllPlaylists
+} from '@/db/actions/action.user';
+import { Playlist } from '@/db/models/model.user';
+
+export const useMusicActions = (trackId?: string) => {
+    const [isLiked, setIsLiked] = useState(false);
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadData() {
+            if (!trackId) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                setIsLoading(true);
+
+                // Check if song is liked
+                const liked = await isSongLiked(trackId);
+                setIsLiked(liked);
+
+                // Get all playlists
+                const userPlaylists = await getAllPlaylists();
+                setPlaylists(userPlaylists);
+            } catch (error) {
+                console.error('Error loading music actions data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        loadData();
+    }, [trackId]);
+
+    const toggleLike = useCallback(async () => {
+        if (!trackId) return;
+
+        try {
+            if (isLiked) {
+                await unlikeSong(trackId);
+            } else {
+                await likeSong(trackId);
+            }
+
+            setIsLiked(!isLiked);
+        } catch (error) {
+            console.error('Error toggling like status:', error);
+        }
+    }, [trackId, isLiked]);
+
+    const addToPlaylist = useCallback(async (playlistId: string) => {
+        if (!trackId) return;
+
+        try {
+            await addTrackToPlaylist(playlistId, trackId);
+            return true;
+        } catch (error) {
+            console.error('Error adding to playlist:', error);
+            return false;
+        }
+    }, [trackId]);
+
+    const createNewPlaylist = useCallback(async (name: string) => {
+        try {
+            const newPlaylist = await createPlaylist(name);
+
+            if (trackId) {
+                await addTrackToPlaylist(newPlaylist.id, trackId);
+            }
+
+            setPlaylists(prev => [...prev, newPlaylist]);
+            return newPlaylist;
+        } catch (error) {
+            console.error('Error creating playlist:', error);
+            return null;
+        }
+    }, [trackId]);
+
+    return {
+        isLiked,
+        playlists,
+        isLoading,
+        toggleLike,
+        addToPlaylist,
+        createNewPlaylist
+    };
+}
+components/shared/FetchTracks.tsx
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Image from 'next/image';
 
-interface Track {
-  id: string;
-  title: string;
-  author: string;
-  src: string;
-  cover?: string;
-  type?: string;
-  album?: string;
+import { motion } from 'framer-motion';
+import { memo, useCallback } from 'react';
+import { Play, Pause, Music } from 'lucide-react';
+import { useAudio } from '@/components/player/AudioContext';
+
+interface FetchTracksProps {
+  tracks: Track[];
+  isLoading: boolean;
+  error: string | null;
+  handleTrackSelect: (index: number) => void;
+  layout?: 'blocks' | 'list';
+  variant?: 'flex' | 'grid';
 }
 
-interface AudioContextType {
-    tracks: Track[];
-    currentTrackIndex: number;
-    isPlaying: boolean;
-    volume: number;
-    currentTime: number;
-    duration: number;
-    shuffleMode: boolean;
-    repeatMode: boolean;
-    playTrack: (track: Track, trackList?: Track[]) => void;
-    playTrackAtIndex: (index: number, trackList: Track[]) => void;
-    togglePlayPause: () => void;
-    nextTrack: () => void;
-    prevTrack: () => void;
-    setVolume: (value: number) => void;
-    seekTo: (time: number) => void;
-    toggleShuffleMode: () => void;
-    toggleRepeatMode: () => void;
-    hasNextTrack: boolean;
-    hasPrevTrack: boolean;
-}
+export const FetchTracks = memo(({
+  tracks,
+  isLoading,
+  error,
+  handleTrackSelect,
+  layout = 'blocks',
+  variant = 'flex'
+}: FetchTracksProps) => {
+  const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
-const AudioContext = createContext<AudioContextType | undefined>(undefined);
+  // Format time display (e.g., 01:45)
+  const formatTime = useCallback((time: number): string => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, []);
 
-export const useAudio = () => {
-    const context = useContext(AudioContext);
-    if (!context) {
-        throw new Error('useAudio must be used within an AudioProvider');
-    }
-    return context;
-};
+  // Check if a track is the currently playing track
+  const isTrackPlaying = (track: Track) => {
+    if (!isPlaying) return false;
 
-export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [tracks, setTracks] = useState<Track[]>([]);
-    const [originalTracks, setOriginalTracks] = useState<Track[]>([]);
-    const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
-    const [isPlaying, setIsPlaying] = useState<boolean>(false);
-    const [volume, setVolume] = useState<number>(0.5);
-    const [currentTime, setCurrentTime] = useState<number>(0);
-    const [duration, setDuration] = useState<number>(0);
-    const [shuffleMode, setShuffleMode] = useState<boolean>(false);
-    const [repeatMode, setRepeatMode] = useState<boolean>(false);
+    const currentTrack = currentTracks[currentTrackIndex];
+    return currentTrack && currentTrack.id === track.id;
+  };
 
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const savedTimeRef = useRef<number>(0);
+  if (isLoading) {
+    return <div className="text-start py-4">Заргужаем песни...</div>;
+  }
 
-    // Load saved state from localStorage on initial render
-    useEffect(() => {
-        // Only run on client side
-        if (typeof window !== 'undefined') {
-            try {
-                const savedState = localStorage.getItem('audioPlayerState');
-                if (savedState) {
-                    const parsedState = JSON.parse(savedState);
+  if (error) {
+    return <div className="text-center text-red-500 py-4">{error}</div>;
+  }
 
-                    if (parsedState.tracks && parsedState.tracks.length > 0) {
-                        setTracks(parsedState.tracks);
-                        setOriginalTracks(parsedState.tracks);
-                        setCurrentTrackIndex(parsedState.currentTrackIndex || 0);
-                        setVolume(parsedState.volume || 0.5);
-                        setShuffleMode(parsedState.shuffleMode || false);
-                        setRepeatMode(parsedState.repeatMode || false);
-                        savedTimeRef.current = parsedState.currentTime || 0;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading audio state from localStorage:', error);
-            }
-        }
-    }, []);
+  if (tracks.length === 0) {
+    return <div className="text-start py-4">Песни не найдены.</div>;
+  }
 
-    // Save state to localStorage when it changes
-    useEffect(() => {
-        if (tracks.length > 0) {
-            const stateToSave = {
-                tracks: originalTracks.length > 0 ? originalTracks : tracks,
-                currentTrackIndex,
-                volume,
-                currentTime,
-                shuffleMode,
-                repeatMode
-            };
-            localStorage.setItem('audioPlayerState', JSON.stringify(stateToSave));
-        }
-    }, [tracks, originalTracks, currentTrackIndex, volume, currentTime, shuffleMode, repeatMode]);
-
-    // Initialize audio element
-    useEffect(() => {
-        if (!audioRef.current) {
-            audioRef.current = new Audio();
-        }
-
-        const audio = audioRef.current;
-
-        // Set up event listeners
-        const handleLoadedMetadata = () => setDuration(audio.duration || 0);
-        const handleTimeUpdate = () => setCurrentTime(audio.currentTime || 0);
-        const handleEnded = () => {
-            if (repeatMode) {
-                // Repeat the current track
-                audio.currentTime = 0;
-                audio.play().catch(e => console.error("Play failed:", e));
-            } else if (hasNextTrack) {
-                nextTrack();
-            } else {
-                setIsPlaying(false);
-            }
-        };
-
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('ended', handleEnded);
-
-        // Set volume from state
-        audio.volume = volume;
-
-        return () => {
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('ended', handleEnded);
-        };
-    }, [repeatMode]);
-
-    // Effect for updating track source
-    useEffect(() => {
-        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            const currentTrack = tracks[currentTrackIndex];
-
-            if (audioRef.current && currentTrack) {
-                const audio = audioRef.current;
-
-                // Save current time of previous track if it's the same track
-                if (audio.src.includes(currentTrack.src)) {
-                    savedTimeRef.current = audio.currentTime;
-                } else {
-                    savedTimeRef.current = 0;
-                }
-
-                // Update source
-                audio.src = currentTrack.src;
-
-                // After source is updated, set the saved time
-                audio.addEventListener('loadedmetadata', () => {
-                    audio.currentTime = savedTimeRef.current;
-                    if (isPlaying) {
-                        audio.play().catch(e => console.error("Play failed:", e));
-                    }
-                }, { once: true });
-            }
-        }
-    }, [tracks, currentTrackIndex]);
-
-    // Effect for play/pause
-    useEffect(() => {
-        if (audioRef.current && tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Play failed:", e));
-            } else {
-                audioRef.current.pause();
-            }
-        }
-    }, [isPlaying, tracks, currentTrackIndex]);
-
-    // Effect for volume changes
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-        }
-    }, [volume]);
-
-    // Calculate if there are next/previous tracks
-    const hasNextTrack = useMemo(() => 
-        tracks.length > 1 && currentTrackIndex < tracks.length - 1,
-        [tracks, currentTrackIndex]
-    );
-
-    const hasPrevTrack = useMemo(() => 
-        tracks.length > 1 && currentTrackIndex > 0,
-        [tracks, currentTrackIndex]
-    );
-
-    // Shuffle an array of tracks
-    const shuffleTracks = useCallback((trackArray: Track[]) => {
-        const shuffled = [...trackArray];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-    }, []);
-
-    // Toggle shuffle mode
-    const toggleShuffleMode = useCallback(() => {
-        setShuffleMode(prev => {
-            const newShuffleMode = !prev;
-            
-            if (newShuffleMode) {
-                // Enabling shuffle: store original tracks and shuffle
-                if (originalTracks.length === 0) {
-                    setOriginalTracks([...tracks]);
-                }
-                
-                // Get current track
-                const currentTrack = tracks[currentTrackIndex];
-                
-                // Shuffle tracks but keep the current track at index 0
-                const tracksWithoutCurrent = tracks.filter((_, idx) => idx !== currentTrackIndex);
-                const shuffledRest = shuffleTracks(tracksWithoutCurrent);
-                setTracks([currentTrack, ...shuffledRest]);
-                setCurrentTrackIndex(0);
-            } else {
-                // Disabling shuffle: restore original track order
-                if (originalTracks.length > 0) {
-                    // Get current track
-                    const currentTrack = tracks[currentTrackIndex];
-                    
-                    // Find current track in original tracks
-                    const originalIndex = originalTracks.findIndex(t => t.id === currentTrack.id);
-                    
-                    setTracks([...originalTracks]);
-                    setCurrentTrackIndex(originalIndex >= 0 ? originalIndex : 0);
-                }
-            }
-            
-            return newShuffleMode;
-        });
-    }, [tracks, currentTrackIndex, originalTracks, shuffleTracks]);
-
-    // Toggle repeat mode
-    const toggleRepeatMode = useCallback(() => {
-        setRepeatMode(prev => !prev);
-    }, []);
-
-    // Play a specific track, optionally within a new track list
-    const playTrack = useCallback((track: Track, trackList?: Track[]) => {
-        if (trackList) {
-            // Save original track list if shuffle is enabled
-            if (shuffleMode) {
-                setOriginalTracks(trackList);
-                
-                // Find track in the list
-                const trackIndex = trackList.findIndex(t => t.id === track.id);
-                
-                // Create shuffled version but with selected track first
-                const tracksWithoutSelected = trackList.filter(t => t.id !== track.id);
-                const shuffledRest = shuffleTracks(tracksWithoutSelected);
-                
-                setTracks([track, ...shuffledRest]);
-                setCurrentTrackIndex(0);
-            } else {
-                setTracks(trackList);
-                const newIndex = trackList.findIndex(t => t.id === track.id);
-                setCurrentTrackIndex(newIndex >= 0 ? newIndex : 0);
-            }
-        } else {
-            // If no track list is provided, create a single-item list
-            setTracks([track]);
-            setOriginalTracks([track]);
-            setCurrentTrackIndex(0);
-        }
-        setIsPlaying(true);
-    }, [shuffleMode, shuffleTracks]);
-
-    // Play a track at a specific index within a track list
-    const playTrackAtIndex = useCallback((index: number, trackList: Track[]) => {
-        if (shuffleMode) {
-            setOriginalTracks(trackList);
-            
-            // Get selected track
-            const selectedTrack = trackList[index];
-            
-            // Create shuffled version but with selected track first
-            const tracksWithoutSelected = trackList.filter((_, idx) => idx !== index);
-            const shuffledRest = shuffleTracks(tracksWithoutSelected);
-            
-            setTracks([selectedTrack, ...shuffledRest]);
-            setCurrentTrackIndex(0);
-        } else {
-            setTracks(trackList);
-            setCurrentTrackIndex(index);
-        }
-        setIsPlaying(true);
-    }, [shuffleMode, shuffleTracks]);
-
-    // Toggle play/pause
-    const togglePlayPause = useCallback(() => {
-        setIsPlaying(prev => !prev);
-    }, []);
-
-    // Next track
-    const nextTrack = useCallback(() => {
-        if (hasNextTrack) {
-            setCurrentTrackIndex(prev => prev + 1);
-            savedTimeRef.current = 0;
-        } else if (repeatMode && tracks.length > 0) {
-            // If repeat is enabled and we're at the end, go back to the first track
-            setCurrentTrackIndex(0);
-            savedTimeRef.current = 0;
-        }
-    }, [hasNextTrack, repeatMode, tracks.length]);
-
-    // Previous track
-    const prevTrack = useCallback(() => {
-        if (hasPrevTrack) {
-            setCurrentTrackIndex(prev => prev - 1);
-            savedTimeRef.current = 0;
-        } else if (repeatMode && tracks.length > 0) {
-            // If repeat is enabled and we're at the beginning, go to the last track
-            setCurrentTrackIndex(tracks.length - 1);
-            savedTimeRef.current = 0;
-        }
-    }, [hasPrevTrack, repeatMode, tracks.length]);
-
-    // Seek to a specific time
-    const seekTo = useCallback((time: number) => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = time;
-            setCurrentTime(time);
-        }
-    }, []);
-
-    // Memoize context value to prevent unnecessary re-renders
-    const contextValue = useMemo(() => ({
-        tracks,
-        currentTrackIndex,
-        isPlaying,
-        volume,
-        currentTime,
-        duration,
-        shuffleMode,
-        repeatMode,
-        playTrack,
-        playTrackAtIndex,
-        togglePlayPause,
-        nextTrack,
-        prevTrack,
-        setVolume,
-        seekTo,
-        toggleShuffleMode,
-        toggleRepeatMode,
-        hasNextTrack,
-        hasPrevTrack
-    }), [
-        tracks,
-        currentTrackIndex,
-        isPlaying,
-        volume,
-        currentTime,
-        duration,
-        shuffleMode,
-        repeatMode,
-        playTrack,
-        playTrackAtIndex,
-        togglePlayPause,
-        nextTrack,
-        prevTrack,
-        hasNextTrack,
-        hasPrevTrack,
-        toggleShuffleMode,
-        toggleRepeatMode
-    ]);
-
+  // Render tracks in block layout (grid or flex of cards)
+  if (layout === 'blocks') {
     return (
-        <AudioContext.Provider value={contextValue}>
-            {children}
-        </AudioContext.Provider>
+      <div className={variant === 'grid'
+        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+        : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
+      }>
+        {tracks.map((track, index) => (
+          <div
+            key={track.id}
+            className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
+            onClick={() => handleTrackSelect(index)}
+          >
+            <div className="relative w-full">
+              <Image
+                src={track.cover || '/default-cover.jpg'}
+                alt={track.title}
+                width={200}
+                height={200}
+                className="rounded-lg w-full object-cover"
+              />
+              <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
+                {isTrackPlaying(track) ? (
+                  <Pause className="w-8 h-8 text-white" />
+                ) : (
+                  <Play className="w-8 h-8 text-white" />
+                )}
+              </div>
+            </div>
+            <div className="mt-2 sm:mt-4 text-start w-full">
+              <h3 className="font-semibold">{track.title}</h3>
+              <p className="text-sm text-gray-500">{track.author}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     );
-};
+  }
 
-/components/BottomPlayer.tsx
+  // Render tracks in list layout (Spotify-like list)
+  return (
+    <div className="w-full border border-gray-200 rounded-md divide-y">
+      {tracks.map((track, index) => (
+        <div
+          key={track.id}
+          className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer ${isTrackPlaying(track) ? 'bg-gray-50' : ''}`}
+          onClick={() => handleTrackSelect(index)}
+        >
+          <div className="flex items-center flex-1 min-w-0">
+            <div className="relative flex-shrink-0 w-12 h-12 mr-3">
+              {track.cover ? (
+                <Image
+                  src={track.cover}
+                  alt={track.title}
+                  width={48}
+                  height={48}
+                  className="rounded object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center bg-gray-200 rounded w-full h-full">
+                  <Music className="w-6 h-6 text-gray-500" />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                {isTrackPlaying(track) ? (
+                  <Pause className="w-6 h-6 text-white" />
+                ) : (
+                  <Play className="w-6 h-6 text-white" />
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h4 className="font-medium truncate">{track.title}</h4>
+              <p className="text-sm text-gray-500 truncate">{track.author}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {isTrackPlaying(track) ? (
+              <span className="text-xs font-medium text-green-600 w-16 text-right">Playing</span>
+            ) : (
+              <span className="text-xs text-gray-500 w-16 text-right">
+
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+components/player/BottomPlayer.tsx
 "use client"
 
 import Image from 'next/image';
@@ -506,7 +558,6 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
-import { useState, useCallback, memo, useEffect } from 'react';
 import {
     Volume1,
     Volume2,
@@ -520,6 +571,13 @@ import {
     Repeat,
     Shuffle
 } from 'lucide-react';
+
+import {
+    useState,
+    useCallback,
+    memo,
+    useEffect
+} from 'react';
 import { useAudio } from './AudioContext';
 
 const BottomPlayer = () => {
@@ -800,155 +858,3 @@ const BottomPlayer = () => {
 };
 
 export default memo(BottomPlayer);
-/components/shared/FetchTracks.tsx
-// /components/shared/FetchTracks.tsx
-"use client"
-
-import Image from 'next/image';
-
-import { memo } from 'react';
-import { Play, Pause } from 'lucide-react';
-import { useAudio } from '@/components/player/AudioContext';
-
-interface FetchTracksProps {
-  tracks: Track[];
-  isLoading: boolean;
-  error: string | null;
-  handleTrackSelect: (index: number) => void;
-}
-
-export const FetchTracks = memo(({
-  tracks,
-  isLoading,
-  error,
-  handleTrackSelect
-}: FetchTracksProps) => {
-  const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
-
-  // Check if a track is the currently playing track
-  const isTrackPlaying = (track: Track) => {
-    if (!isPlaying) return false;
-
-    const currentTrack = currentTracks[currentTrackIndex];
-    return currentTrack && currentTrack.id === track.id;
-  };
-
-  if (isLoading) {
-    return <div className="text-start py-4">Заргужаем песни...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center text-red-500 py-4">{error}</div>;
-  }
-
-  if (tracks.length === 0) {
-    return <div className="text-start py-4">Песни не найдены.</div>;
-  }
-
-  return (
-    <div className="flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full">
-      {tracks.map((track, index) => (
-        <div
-          key={track.id}
-          className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
-          onClick={() => handleTrackSelect(index)}
-        >
-          <div className="relative w-full">
-            <Image
-              src={track.cover || '/default-cover.jpg'}
-              alt={track.title}
-              width={200}
-              height={200}
-              className="rounded-lg"
-            />
-            <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
-              {isTrackPlaying(track) ? (
-                <Pause className="w-8 h-8 text-white" />
-              ) : (
-                <Play className="w-8 h-8 text-white" />
-              )}
-            </div>
-          </div>
-          <div className="mt-2 sm:mt-4 text-start w-full">
-            <h3 className="font-semibold">{track.title}</h3>
-            <p className="text-sm text-gray-500">{track.author}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-});
-
-FetchTracks.displayName = 'FetchTracks';
-/hooks/useTracks.ts
-"use client"
-
-import { useState, useEffect, useCallback } from "react";
-import { useAudio } from "@/components/player/AudioContext";
-
-export const useTracks = (...trackNames: string[]) => {
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { 
-    playTrackAtIndex,
-    isPlaying,
-    togglePlayPause,
-    currentTime,
-    duration
-  } = useAudio();
-
-  useEffect(() => {
-    const fetchTracks = async () => {
-      try {
-        setIsLoading(true);
-
-        let url = '/api/tracks';
-        // If track names are provided, add them as query parameters
-        if (trackNames.length > 0) {
-          const queryParams = new URLSearchParams();
-          trackNames.forEach(name => queryParams.append('tracks', name));
-          url = `${url}?${queryParams.toString()}`;
-        }
-
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch tracks: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (Array.isArray(data) && data.length > 0) {
-          setTracks(data);
-        } else {
-          setError('No tracks found. Please add some music files to the tracks directory.');
-        }
-      } catch (err) {
-        console.error('Error fetching tracks:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error fetching tracks');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTracks();
-  }, [trackNames.join(',')]); // Re-fetch when track list changes
-
-  // Handle track selection
-  const handleTrackSelect = useCallback((index: number) => {
-    playTrackAtIndex(index, tracks);
-  }, [playTrackAtIndex, tracks]);
-
-  return {
-    tracks,
-    isPlaying,
-    isLoading,
-    error,
-    currentTime,
-    duration,
-    handleTrackSelect,
-    handlePlayPauseToggle: togglePlayPause
-  };
-};

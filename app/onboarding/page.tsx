@@ -34,7 +34,6 @@ const Page = () => {
         <div className="absolute flex items-center justify-center w-full h-full z-[9999] bg-gradient-to-b from-violet-200 to-pink-200">
             <div className="w-full max-w-md p-6 border border-neutral-200 bg-white/50 backdrop-blur-[18px] rounded-xl">
                 <h1 className="text-xl font-bold mb-6 text-center">Добро пожаловать в Ayfaar Radio</h1>
-
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <Input

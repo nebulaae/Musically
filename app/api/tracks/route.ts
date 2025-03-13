@@ -23,7 +23,7 @@ async function getCoverFromCache(hash: string, coverFilename: string, imageBuffe
   return coverCache[hash];
 }
 
-export async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
+async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
   const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
 
   try {
@@ -40,7 +40,7 @@ export async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
         const filePath = path.join(tracksDirectory, filename);
         const id = uuidv4();
         const fileType = path.extname(filename).toLowerCase().substring(1);
-        let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+        let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
         let author: string | undefined;
         let album: string | undefined;
         let cover: string | undefined = '/default-cover.jpg';
