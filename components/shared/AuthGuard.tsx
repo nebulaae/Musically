@@ -1,9 +1,10 @@
 "use client"
 
+import { LoaderCircle } from 'lucide-react';
+import { useDbInit } from '@/hooks/useDbInit';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { hasCompletedOnboarding } from '@/db/actions/action.user';
-import { useDbInit } from '@/hooks/useDbInit';
 
 interface AuthGuardProps {
     children: ReactNode;
@@ -42,8 +43,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
     if (isInitializing || isChecking) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="absolute flex items-center justify-center w-full h-full">
+                <LoaderCircle className="animate-spin" />
             </div>
         );
     }

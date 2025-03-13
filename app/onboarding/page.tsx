@@ -4,8 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeOnboarding } from '@/db/actions/action.user';
 
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
 const Page = () => {
     const [name, setName] = useState('');
+    const [isFocused, setIsFocused] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
 
@@ -27,35 +31,33 @@ const Page = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-            <div className="w-full max-w-md p-6 bg-white rounded-xl shadow-lg">
-                <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Music App</h1>
+        <div className="absolute flex items-center justify-center w-full h-full z-[9999] bg-gradient-to-b from-violet-200 to-pink-200">
+            <div className="w-full max-w-md p-6 border border-neutral-200 bg-white/50 backdrop-blur-[18px] rounded-xl">
+                <h1 className="text-xl font-bold mb-6 text-center">Добро пожаловать в Ayfaar Radio</h1>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label htmlFor="name" className="block text-sm font-medium mb-2">
-                            What should we call you?
-                        </label>
-                        <input
+                        <Input
                             type="text"
                             id="name"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter your name"
+                            onChange={(e) => setName(e.target.value.trimStart())}
+                            className={`rounded-full py-6 w-full px-6 ${isFocused ? 'bg-purple shadow-2xl shadow-purple-500/50' : ''}`}
+                            placeholder="Введите свое имя"
                             required
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
                         />
                     </div>
-
-                    <button
+                    <Button
                         type="submit"
-                        disabled={isSubmitting || !name.trim()}
-                        className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || name.trim().length === 0}
+                        className="cursor-pointer text-white font-bold relative w-full text-center bg-gradient-to-r from-violet-500 from-10% via-sky-500 via-30% to-pink-500 to-90% bg-[length:400%] rounded-[30px] hover:animate-gradient-xy hover:bg-[length:100%] before:content-[''] before:absolute before:-top-[5px] before:-bottom-[5px] before:-left-[5px] before:-right-[5px] before:bg-gradient-to-r before:from-violet-500 before:from-10% before:via-sky-500 before:via-30% before:to-pink-500 before:to-90% before:bg-[length:400%] before:-z-10 before:rounded-[35px] before:transition-all before:ease-in-out before:duration-[1s] hover:before:blur-xl hover:before:bg-[length:100%] active:bg-violet-700 focus:ring-violet-700"
                     >
-                        {isSubmitting ? 'Getting things ready...' : 'Get Started'}
-                    </button>
+                        {isSubmitting ? 'Подготовка...' : 'Войти'}
+                    </Button>
                 </form>
-            </div>
+            </div >
         </div>
     );
 }

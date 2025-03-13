@@ -1,36 +1,53 @@
+// components/shared/TrackActions.tsx
 "use client"
 
 import { useState } from 'react';
 import { Heart, Plus, X } from 'lucide-react';
 import { useMusicActions } from '@/hooks/useMusicActions';
+import { logDebug } from '@/utils/debug';
 
 interface TrackActionsProps {
     trackId: string;
 }
 
 export const TrackActions = ({ trackId }: TrackActionsProps) => {
-    const { isLiked, playlists, toggleLike, addToPlaylist, createNewPlaylist } = useMusicActions(trackId);
+    const { isLiked, playlists, toggleLike, addToPlaylist, createNewPlaylist, refreshLikedSongs } = useMusicActions(trackId);
     const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
     const [newPlaylistName, setNewPlaylistName] = useState('');
     const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+
+    const handleToggleLike = async () => {
+        logDebug(`TrackActions: Toggling like for track ${trackId}`);
+        await toggleLike();
+        // Force refresh to update all components
+        await refreshLikedSongs();
+    };
 
     const handleCreatePlaylist = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!newPlaylistName.trim()) return;
 
+        logDebug(`TrackActions: Creating new playlist: ${newPlaylistName}`);
         const newPlaylist = await createNewPlaylist(newPlaylistName);
 
         if (newPlaylist) {
             setNewPlaylistName('');
             setIsCreatingPlaylist(false);
+            logDebug(`TrackActions: New playlist created: ${newPlaylist.id}`);
         }
+    };
+
+    const handleAddToPlaylist = async (playlistId: string) => {
+        logDebug(`TrackActions: Adding track ${trackId} to playlist ${playlistId}`);
+        await addToPlaylist(playlistId);
+        setShowPlaylistMenu(false);
     };
 
     return (
         <div className="flex items-center gap-2 relative">
             <button
-                onClick={toggleLike}
+                onClick={handleToggleLike}
                 className={`p-2 rounded-full hover:bg-gray-100 ${isLiked ? 'text-red-500' : 'text-gray-600'}`}
                 aria-label={isLiked ? 'Unlike' : 'Like'}
             >
@@ -61,10 +78,7 @@ export const TrackActions = ({ trackId }: TrackActionsProps) => {
                         {playlists.map(playlist => (
                             <button
                                 key={playlist.id}
-                                onClick={async () => {
-                                    await addToPlaylist(playlist.id);
-                                    setShowPlaylistMenu(false);
-                                }}
+                                onClick={() => handleAddToPlaylist(playlist.id)}
                                 className="w-full text-left p-2 hover:bg-gray-100"
                             >
                                 {playlist.name}
@@ -111,4 +125,4 @@ export const TrackActions = ({ trackId }: TrackActionsProps) => {
             )}
         </div>
     );
-}
+};

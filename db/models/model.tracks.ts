@@ -1,7 +1,7 @@
 export interface Track {
     id: string;
     title: string;
-    author: string;
+    author?: string;
     album?: string;
     src: string;
     cover?: string;
