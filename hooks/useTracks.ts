@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAudio } from "@/components/player/AudioContext";
-import { Track } from "@/db/models/model.tracks"; // Import the Track type from your models
+import { Track } from "@/db/models/tracks.model"; // Import the Track type from your models
 
 export const useTracks = (...trackNames: string[]) => {
   const [tracks, setTracks] = useState<Track[]>([]);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { syncTracksFromAPI } from '@/db/actions/action.tracks';
-import { getCurrentUser } from '@/db/actions/action.user';
+import { syncTracksFromAPI } from '@/db/actions/tracks.actions';
+import { getCurrentUser } from '@/db/actions/user.actions';
 
 export function useDbInit() {
     const [isInitializing, setIsInitializing] = useState(true);

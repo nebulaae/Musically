@@ -4,7 +4,7 @@ import { LoaderCircle } from 'lucide-react';
 import { useDbInit } from '@/hooks/useDbInit';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { hasCompletedOnboarding } from '@/db/actions/action.user';
+import { hasCompletedOnboarding } from '@/db/actions/user.actions';
 
 interface AuthGuardProps {
     children: ReactNode;

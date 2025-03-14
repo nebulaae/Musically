@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { User } from "@/db/models/model.user";
-import { Track } from "@/db/models/model.tracks";
-import { getCurrentUser, getLikedSongs } from "@/db/actions/action.user";
+import { User } from "@/db/models/user.model";
+import { Track } from "@/db/models/tracks.model";
+import { getCurrentUser, getLikedSongs } from "@/db/actions/user.actions";
 
 import { useAudio } from "@/components/player/AudioContext";
 import { FetchTracks } from "@/components/shared/FetchTracks";
+import { PlaylistPreview } from "@/components/shared/PlaylistPreview";
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
+import { PlaylistGrid } from "@/components/shared/PlaylistGrid";
 
 const Page = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -20,13 +22,7 @@ const Page = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const {
-        playTrackAtIndex,
-        isPlaying,
-        togglePlayPause,
-        currentTime,
-        duration
-    } = useAudio();
+    const { playTrackAtIndex } = useAudio();
 
     useEffect(() => {
         const fetchLikedSongs = async () => {
@@ -61,12 +57,12 @@ const Page = () => {
                         <h1 className="title-text">Здраствуйте, {user?.name}!</h1>
                     </div>
                     {/* TABS */}
-                    <Tabs defaultValue="liked">
+                    <Tabs defaultValue="favorite">
                         <TabsList className="w-full">
-                            <TabsTrigger value="liked">Понравившееся</TabsTrigger>
+                            <TabsTrigger value="favorite">Понравившееся</TabsTrigger>
                             <TabsTrigger value="playlists">Плейлисты</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="liked">
+                        <TabsContent value="favorite">
                             <FetchTracks
                                 tracks={likedSongs}
                                 isLoading={isLoading}
@@ -75,7 +71,9 @@ const Page = () => {
                                 layout="list"
                             />
                         </TabsContent>
-                        <TabsContent value="playlists">Плейлисты</TabsContent>
+                        <TabsContent value="playlists">
+                            <PlaylistGrid />
+                        </TabsContent>
                     </Tabs>
                 </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { completeOnboarding } from '@/db/actions/action.user';
+import { completeOnboarding } from '@/db/actions/user.actions';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

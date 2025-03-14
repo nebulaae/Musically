@@ -170,7 +170,7 @@ const BottomPlayer = () => {
             className={`fixed ${isExpanded ? 'inset-0 bg-white' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'} bg-sidebar glassmorphism border-t-[1px] border-neutral-200 p-4 z-100`}
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30, mass: 1 }}
         >
             <div className={`flex items-center justify-between ${isExpanded ? 'flex-col h-full' : 'flex-col md:flex-row'} gap-4 w-full`}>
                 {isExpanded && (
@@ -190,7 +190,7 @@ const BottomPlayer = () => {
 
                 {/* Track Info */}
                 <div
-                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : 'w-full md:w-auto justify-between sm:justify-center px-4 sm:px-0'}`}
+                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : 'w-full md:w-auto justify-between sm:justify-center'}`}
                     onClick={isExpanded ? undefined : toggleExpanded}
                 >
                     <div className={`flex items-center gap-2 ${isExpanded ? 'flex-col text-center' : ''}`}>
@@ -211,16 +211,30 @@ const BottomPlayer = () => {
                         </div>
                         {/* Like Button for Bottom Player */}
                     </div>
-                    <div className={`${isExpanded ? 'hidden' : 'ml-4'}`}>
+                    <div className={`${isExpanded ? 'hidden' : 'flex items-center ml-6 gap-2'}`}>
                         <LikeButton
                             trackId={currentTrack?.id || ''}
                             size={isExpanded ? 'lg' : 'md'}
                         />
+                        <motion.button
+                            className={`flex sm:hidden p-3 font-thin ${isExpanded ? 'p-5' : 'text-gray-500'} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            onClick={handlePlayPauseToggle}
+                            whileTap={!isButtonDisabled ? { scale: 0.9 } : undefined}
+                            disabled={isButtonDisabled}
+                        >
+                            {isButtonDisabled ? (
+                                <Loader2 className={`${isExpanded ? 'w-6 h-6' : 'w-6 h-6'} animate-spin`} />
+                            ) : isPlaying ? (
+                                <Pause className={isExpanded ? 'w-6 h-6' : 'w-6 h-6'} />
+                            ) : (
+                                <Play className={isExpanded ? 'w-6 h-6' : 'w-6 h-6'} />
+                            )}
+                        </motion.button>
                     </div>
                 </div>
 
                 {/* Player Controls - Middle */}
-                <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row'} md:flex-1 justify-center`}>
+                <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row hidden sm:flex'} md:flex-1 justify-center`}>
                     <div className="flex flex-col items-center justify-center gap-2 w-full">
                         <div className={`flex items-center space-x-3 md:space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
                             {/* Shuffle Button */}
@@ -282,7 +296,7 @@ const BottomPlayer = () => {
                             </motion.div>
                         </div>
                         {/* Song Progress Slider */}
-                        <div className="flex items-center w-full max-w-[500px] space-x-2">
+                        <div className={`items-center w-full max-w-[500px] space-x-2 ${isExpanded ? 'flex' : 'hidden sm:flex'}`}>
                             <span className="text-sm text-gray-500">{formatTime(currentTime)}</span>
                             <Slider
                                 value={[progressPercentage]}

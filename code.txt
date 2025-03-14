@@ -1,34 +1,104 @@
-/db/models/user.model.ts
-export interface User {
-    id: string;
-    name: string;
-    likedSongs: string[]; // Array of track IDs
-    playlists: Playlist[];
-    onboarding: boolean;
+db/index
+import Dexie, { Table } from 'dexie';
+import { Track } from './models/tracks.model';
+import { User } from './models/user.model';
+
+export class Database extends Dexie {
+    tracks!: Table<Track>;
+    users!: Table<User>;
+
+    constructor() {
+        super('Database');
+        this.version(1).stores({
+            tracks: 'id, title, author, album, src, cover, type',
+            users: 'id, name, onboarding',
+        });
+    }
 }
 
-export interface Playlist {
-    id: string;
-    name: string;
-    tracks: string[]; // Array of track IDs
-    createdAt: Date;
-}
-/db/models/tracks.model.ts
-export interface Track {
-    id: string;
-    title: string;
-    author?: string;
-    album?: string;
-    src: string;
-    cover?: string;
-    type?: string;
-}
-/db/actions/user.actions.ts
-import { v4 as uuidv4 } from 'uuid';
+// Create a single instance of the database to be used throughout the app
+const db = new Database();
+
+export default db;
+
+db/actions/track.actions.ts
 import db from '../index';
-import { User, Playlist } from '../models/model.user';
-import { Track } from '../models/model.tracks';
-import { getTracksByIds } from './action.tracks';
+import { Track } from '../models/tracks.model';
+
+export async function syncTracksFromAPI(): Promise<Track[]> {
+    try {
+        // Fetch tracks from the API
+        const response = await fetch('/api/tracks');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch tracks: ${response.status}`);
+        }
+
+        const newTracks: Track[] = await response.json();
+
+        // Store tracks in the database while preserving existing tracks
+        await db.transaction('rw', db.tracks, async () => {
+            // Get existing tracks
+            const existingTracks = await db.tracks.toArray();
+            const existingIds = new Set(existingTracks.map(track => track.id));
+
+            // Add only new tracks
+            const tracksToAdd = newTracks.filter(track => !existingIds.has(track.id));
+
+            // Update existing tracks
+            const tracksToUpdate = newTracks.filter(track => existingIds.has(track.id));
+
+            // Add new tracks
+            if (tracksToAdd.length > 0) {
+                await db.tracks.bulkAdd(tracksToAdd);
+            }
+
+            // Update existing tracks
+            for (const track of tracksToUpdate) {
+                await db.tracks.update(track.id, track);
+            }
+        });
+
+        return newTracks;
+    } catch (error) {
+        console.error('Error syncing tracks:', error);
+        throw error;
+    }
+}
+
+// Get all tracks from the database
+export async function getAllTracks(): Promise<Track[]> {
+    return await db.tracks.toArray();
+}
+
+// Get a track by ID
+export async function getTrackById(id: string): Promise<Track | undefined> {
+    return await db.tracks.get(id);
+}
+
+// Get tracks by IDs
+export async function getTracksByIds(ids: string[]): Promise<Track[]> {
+    return await db.tracks.where('id').anyOf(ids).toArray();
+}
+
+// Search tracks by title or author
+export async function searchTracks(query: string): Promise<Track[]> {
+    const lowerQuery = query.toLowerCase();
+
+    return await db.tracks.filter((track: Track) => {
+        const titleMatch = track.title.toLowerCase().includes(lowerQuery);
+        const authorMatch = track.author ? track.author.toLowerCase().includes(lowerQuery) : false;
+
+        return titleMatch || authorMatch;
+    }).toArray();
+}
+
+db/actions/user.actions.ts
+import db from '../index';
+
+import { v4 as uuidv4 } from 'uuid';
+import { User, Playlist } from '../models/user.model';
+import { Track } from '../models/tracks.model';
+import { getTracksByIds } from './tracks.actions';
 
 // Get the current user (create one if it doesn't exist)
 export async function getCurrentUser(): Promise<User> {
@@ -201,6 +271,30 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
     });
 }
 
+// Rename a playlist
+export async function renamePlaylist(playlistId: string, newName: string): Promise<void> {
+    const user = await getCurrentUser();
+
+    const updatedPlaylists = user.playlists.map(playlist => {
+        if (playlist.id === playlistId) {
+            return {
+                ...playlist,
+                name: newName
+            };
+        }
+        return playlist;
+    });
+
+    const updatedUser: User = {
+        ...user,
+        playlists: updatedPlaylists
+    };
+
+    await db.users.update(user.id, {
+        playlists: updatedUser.playlists
+    });
+}
+
 // Get a playlist by ID with its tracks
 export async function getPlaylistWithTracks(playlistId: string): Promise<{ playlist: Playlist, tracks: Track[] } | null> {
     const user = await getCurrentUser();
@@ -218,103 +312,317 @@ export async function getAllPlaylists(): Promise<Playlist[]> {
     const user = await getCurrentUser();
     return user.playlists;
 }
-/db/actions/tracks.actions.ts
-import db from '../index';
-import { Track } from '../models/model.tracks';
 
-export async function syncTracksFromAPI(): Promise<Track[]> {
-    try {
-        // Fetch tracks from the API
-        const response = await fetch('/api/tracks');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch tracks: ${response.status}`);
+db/models/user.model.ts
+export interface User {
+    id: string;
+    name: string;
+    likedSongs: string[]; // Array of track IDs
+    playlists: Playlist[];
+    onboarding: boolean;
+}
+
+export interface Playlist {
+    id: string;
+    name: string;
+    tracks: string[]; // Array of track IDs
+    createdAt: Date;
+}
+db/models/tracks.model.ts
+export interface Track {
+    id: string;
+    title: string;
+    author: string;
+    album?: string;
+    src: string;
+    cover?: string;
+    type?: string;
+}
+import { useState, useEffect, useCallback } from 'react';
+import {
+    createPlaylist,
+    addTrackToPlaylist,
+    getAllPlaylists,
+    getPlaylistWithTracks,
+    getCurrentUser,
+    removeTrackFromPlaylist,
+    deletePlaylist
+} from '@/db/actions/user.actions';
+import { Playlist } from '@/db/models/user.model';
+
+export const usePlaylist = (trackId?: string) => {
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchPlaylists = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const userPlaylists = await getAllPlaylists();
+            setPlaylists(userPlaylists);
+        } catch (error) {
+            console.error('Error loading playlists:', error);
+        } finally {
+            setIsLoading(false);
         }
+    }, []);
 
-        const newTracks: Track[] = await response.json();
+    useEffect(() => {
+        fetchPlaylists();
+    }, [fetchPlaylists]);
 
-        // Store tracks in the database while preserving existing tracks
-        await db.transaction('rw', db.tracks, async () => {
-            // Get existing tracks
-            const existingTracks = await db.tracks.toArray();
-            const existingIds = new Set(existingTracks.map(track => track.id));
+    const addToPlaylist = useCallback(async (playlistId: string) => {
+        if (!trackId) return false;
 
-            // Add only new tracks
-            const tracksToAdd = newTracks.filter(track => !existingIds.has(track.id));
+        try {
+            await addTrackToPlaylist(playlistId, trackId);
+            // Refresh playlists to reflect the changes
+            await fetchPlaylists();
+            return true;
+        } catch (error) {
+            console.error('Error adding to playlist:', error);
+            return false;
+        }
+    }, [trackId, fetchPlaylists]);
 
-            // Update existing tracks
-            const tracksToUpdate = newTracks.filter(track => existingIds.has(track.id));
+    const removeFromPlaylist = useCallback(async (playlistId: string) => {
+        if (!trackId) return false;
 
-            // Add new tracks
-            if (tracksToAdd.length > 0) {
-                await db.tracks.bulkAdd(tracksToAdd);
+        try {
+            await removeTrackFromPlaylist(playlistId, trackId);
+            // Refresh playlists to reflect the changes
+            await fetchPlaylists();
+            return true;
+        } catch (error) {
+            console.error('Error removing from playlist:', error);
+            return false;
+        }
+    }, [trackId, fetchPlaylists]);
+
+    const createNewPlaylist = useCallback(async (name: string) => {
+        try {
+            const newPlaylist = await createPlaylist(name);
+
+            if (trackId) {
+                await addTrackToPlaylist(newPlaylist.id, trackId);
             }
 
-            // Update existing tracks
-            for (const track of tracksToUpdate) {
-                await db.tracks.update(track.id, track);
-            }
-        });
+            // Refresh playlists to reflect the changes
+            await fetchPlaylists();
+            return newPlaylist;
+        } catch (error) {
+            console.error('Error creating playlist:', error);
+            return null;
+        }
+    }, [trackId, fetchPlaylists]);
 
-        return newTracks;
-    } catch (error) {
-        console.error('Error syncing tracks:', error);
-        throw error;
-    }
+    const removePlaylist = useCallback(async (playlistId: string) => {
+        try {
+            await deletePlaylist(playlistId);
+            await fetchPlaylists();
+            return true;
+        } catch (error) {
+            console.error('Error deleting playlist:', error);
+            return false;
+        }
+    }, [fetchPlaylists]);
+
+    const renamePlaylist = useCallback(async (playlistId: string, newName: string) => {
+        try {
+            await renamePlaylist(playlistId, newName);
+            await fetchPlaylists();
+            return true;
+        } catch (error) {
+            console.error('Error renaming playlist:', error);
+            return false;
+        }
+    }, [playlists, fetchPlaylists]);
+
+
+    const isTrackInPlaylist = useCallback((playlistId: string): boolean => {
+        if (!trackId) return false;
+
+        const playlist = playlists.find(p => p.id === playlistId);
+        return playlist ? playlist.tracks.includes(trackId) : false;
+    }, [playlists, trackId]);
+
+    const getPlaylistById = useCallback(async (playlistId: string) => {
+        try {
+            return await getPlaylistWithTracks(playlistId);
+        } catch (error) {
+            console.error('Error getting playlist:', error);
+            return null;
+        }
+    }, []);
+
+    return {
+        playlists,
+        isLoading,
+        addToPlaylist,
+        removeFromPlaylist,
+        createNewPlaylist,
+        removePlaylist,
+        renamePlaylist,
+        isTrackInPlaylist,
+        getPlaylistById,
+        refreshPlaylists: fetchPlaylists
+    };
+};
+
+/components/shader/FetchTracks
+"use client"
+
+import Image from 'next/image';
+
+import { memo } from 'react';
+import { Play, Pause } from 'lucide-react';
+import { SoundWave } from '../ui/magic/SoundWave';
+import { PlaylistActions } from './PlaylistActions';
+import { useAudio } from '@/components/player/AudioContext';
+import { LikeButton } from '@/components/shared/LikeButton';
+
+interface FetchTracksProps {
+  tracks: Track[];
+  isLoading: boolean;
+  error: string | null;
+  handleTrackSelect: (index: number) => void;
+  layout?: 'blocks' | 'list';
+  variant?: 'flex' | 'grid';
 }
 
-// Get all tracks from the database
-export async function getAllTracks(): Promise<Track[]> {
-    return await db.tracks.toArray();
-}
+export const FetchTracks = memo(({
+  tracks,
+  isLoading,
+  error,
+  handleTrackSelect,
+  layout = 'blocks',
+  variant = 'flex'
+}: FetchTracksProps) => {
+  const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
-// Get a track by ID
-export async function getTrackById(id: string): Promise<Track | undefined> {
-    return await db.tracks.get(id);
-}
+  // Check if a track is the currently playing track
+  const isTrackPlaying = (track: Track) => {
+    if (!isPlaying) return false;
 
-// Get tracks by IDs
-export async function getTracksByIds(ids: string[]): Promise<Track[]> {
-    return await db.tracks.where('id').anyOf(ids).toArray();
-}
+    const currentTrack = currentTracks[currentTrackIndex];
+    return currentTrack && currentTrack.id === track.id;
+  };
 
-// Search tracks by title or author
-export async function searchTracks(query: string): Promise<Track[]> {
-    const lowerQuery = query.toLowerCase();
+  if (isLoading) {
+    return <div className="text-start py-4">Заргужаем песни...</div>;
+  }
 
-    return await db.tracks.filter((track: Track) => {
-        const titleMatch = track.title.toLowerCase().includes(lowerQuery);
-        const authorMatch = track.author ? track.author.toLowerCase().includes(lowerQuery) : false;
+  if (error) {
+    return <div className="text-center text-red-500 py-4">{error}</div>;
+  }
 
-        return titleMatch || authorMatch;
-    }).toArray();
-}
-/db/index.ts
-import Dexie, { Table } from 'dexie';
-import { Track } from './models/model.tracks';
-import { User } from './models/model.user';
+  if (tracks.length === 0) {
+    return <div className="text-start py-4">Песни не найдены.</div>;
+  }
 
-export class MusicAppDatabase extends Dexie {
-    tracks!: Table<Track>;
-    users!: Table<User>;
+  // Render tracks in block layout (grid or flex of cards)
+  if (layout === 'blocks') {
+    return (
+      <div className={variant === 'grid'
+        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+        : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
+      }>
+        {tracks.map((track, index) => (
+          <div
+            key={track.id}
+            className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
+          >
+            <div
+              className="relative w-full"
+              onClick={() => handleTrackSelect(index)}
+            >
+              <Image
+                src={track.cover || '/default-cover.jpg'}
+                alt={track.title}
+                width={200}
+                height={200}
+                className="rounded-lg w-full object-cover"
+              />
+              <div className="absolute flex items-end justify-end inset-0 p-4 z-10">
+                <LikeButton trackId={track.id} size="md" className="ml-2 bg-white/50 glassmorphism p-2 rounded-full shadow-lg" />
+              </div>
 
-    constructor() {
-        super('MusicAppDatabase');
-        this.version(1).stores({
-            tracks: 'id, title, author, album, src, cover, type',
-            users: 'id, name, onboarding',
-        });
-    }
-}
+              {isTrackPlaying(track) &&
+                <div className="absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
+                  <SoundWave dark />
+                </div>
+              }
 
-// Create a single instance of the database to be used throughout the app
-const db = new MusicAppDatabase();
+              <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
+                {isTrackPlaying(track) ? (
+                  <Pause className="w-8 h-8 text-white" />
+                ) : (
+                  <Play className="w-8 h-8 text-white" />
+                )}
+              </div>
+            </div>
 
-export default db;
-/hooks/useTracks.ts
+            <div className="mt-2 sm:mt-4 text-start w-full flex items-center justify-between">
+              <div onClick={() => handleTrackSelect(index)}>
+                <h3 className="font-semibold">{track.title}</h3>
+                <p className="text-sm text-gray-500">{track.author}</p>
+              </div>
+              <PlaylistActions trackId={track.id} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Render tracks in list layout (Spotify-like list)
+  return (
+    <div className="bg-sidebar glassmorphism w-full border border-neutral-200 rounded-xl divide-y">
+      {tracks.map((track, index) => (
+        <div
+          key={track.id}
+          className={`flex items-center p-3 hover:bg-neutral-100 hover:rounded-xl cursor-pointer ${isTrackPlaying(track) ? 'bg-neutral-100 rounded-xl' : ''}`}
+        >
+          <div
+            className="flex items-center flex-1 min-w-0"
+            onClick={() => handleTrackSelect(index)}
+          >
+            <div className="relative flex-shrink-0 w-12 h-12 mr-3">
+              <Image
+                src={track.cover!}
+                alt={track.title}
+                width={48}
+                height={48}
+                className="rounded object-cover"
+              />
+
+              {isTrackPlaying(track) &&
+                <div className="absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
+                  <SoundWave dark />
+                </div>
+              }
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h4 className="font-medium truncate">{track.title}</h4>
+              <p className="text-sm text-gray-500 truncate">{track.author}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <LikeButton trackId={track.id} size="md" />
+            <PlaylistActions trackId={track.id} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+hooks/useTracks
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
 import { useAudio } from "@/components/player/AudioContext";
+import { Track } from "@/db/models/tracks.model"; // Import the Track type from your models
 
 export const useTracks = (...trackNames: string[]) => {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -382,408 +690,284 @@ export const useTracks = (...trackNames: string[]) => {
     handlePlayPauseToggle: togglePlayPause
   };
 };
-/components/shared/LikeButton.tsx
+
+/components/shared/playlist preview
 "use client"
 
-import { Heart } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { isSongLiked, likeSong, unlikeSong } from '@/db/actions/action.user';
+import Link from 'next/link';
+import { useState } from 'react';
+import { Music, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
+import { Playlist } from '@/db/models/user.model';
+import { usePlaylist } from '@/hooks/usePlaylist';
 
-interface LikeButtonProps {
-    trackId: string;
-    size?: 'sm' | 'md' | 'lg';
-    className?: string;
-    onLikeStateChange?: (isLiked: boolean) => void;
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+interface PlaylistPreviewProps {
+    playlist: Playlist;
+    trackCount?: number;
 }
 
-export const LikeButton = ({ trackId, size = 'md', className = '', onLikeStateChange }: LikeButtonProps) => {
-    const [isLiked, setIsLiked] = useState<boolean>(false);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) => {
+    const { removePlaylist, renamePlaylist, refreshPlaylists } = usePlaylist();
+    const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [newPlaylistName, setNewPlaylistName] = useState(playlist.name);
 
-    // Get sizes based on the size prop
-    const sizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5';
+    // Generate a random gradient for each playlist
+    const generateGradient = () => {
+        const gradients = [
+            'from-blue-600 to-purple-600',
+            'from-green-600 to-teal-600',
+            'from-purple-600 to-pink-600',
+            'from-yellow-600 to-orange-600',
+            'from-red-600 to-pink-600',
+            'from-blue-600 to-cyan-600',
+            'from-indigo-600 to-purple-600',
+        ];
 
-    // Check initial like status
-    useEffect(() => {
-        const checkLikeStatus = async () => {
-            if (!trackId) return;
+        // Use a hash of the playlist ID to ensure consistent colors for the same playlist
+        const index = playlist.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
+        return gradients[index];
+    };
 
-            try {
-                setIsLoading(true);
-                const liked = await isSongLiked(trackId);
-                setIsLiked(liked);
-            } catch (error) {
-                console.error('Error checking if song is liked:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const handleDeletePlaylist = async () => {
+        await removePlaylist(playlist.id);
+        setIsDeleteDialogOpen(false);
+    };
 
-        checkLikeStatus();
-    }, [trackId]);
+    const handleRenamePlaylist = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-    const toggleLike = async (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent event bubbling (important for track selection)
+        await renamePlaylist(playlist.id, newPlaylistName);
 
-        if (!trackId || isLoading) return;
+        setIsRenameDialogOpen(false);
+        refreshPlaylists();
+    };
 
-        try {
-            setIsLoading(true);
-
-            if (isLiked) {
-                await unlikeSong(trackId);
-            } else {
-                await likeSong(trackId);
-            }
-
-            const newLikedState = !isLiked;
-            setIsLiked(newLikedState);
-
-            // Notify parent component if callback provided
-            if (onLikeStateChange) {
-                onLikeStateChange(newLikedState);
-            }
-        } catch (error) {
-            console.error('Error toggling like status:', error);
-        } finally {
-            setIsLoading(false);
-        }
+    const handleMenuClick = (e: React.MouseEvent) => {
+        // Prevent click from triggering the Link navigation
+        e.preventDefault();
+        e.stopPropagation();
     };
 
     return (
-        <button
-            onClick={toggleLike}
-            disabled={isLoading}
-            className={`transition-all duration-200 ${className}`}
-            aria-label={isLiked ? "Unlike" : "Like"}
-            title={isLiked ? "Unlike" : "Like"}
-        >
-            <Heart
-                className={`${sizeClass} ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 hover:text-gray-700'} ${isLoading ? 'opacity-50' : ''}`}
-            />
-        </button>
+        <div className="relative group">
+            <Link href={`/playlist/${playlist.id}`}>
+                <div className={`relative w-full h-40 rounded-lg overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${generateGradient()}`}>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-70">
+                        <Music className="w-20 h-20 text-white opacity-50" />
+                    </div>
+
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                        <h3 className="font-bold text-lg truncate">{playlist.name}</h3>
+                        <p className="text-sm opacity-80">
+                            {trackCount !== undefined
+                                ? `${trackCount} ${trackCount === 1 ? 'track' : 'tracks'}`
+                                : `${playlist.tracks.length} ${playlist.tracks.length === 1 ? 'track' : 'tracks'}`}
+                        </p>
+                    </div>
+                </div>
+            </Link>
+
+            {/* Dropdown Menu */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleMenuClick}>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="rounded-full bg-white/50 glassmorphism focus-visible:ring-0">
+                            <EllipsisVertical className="h-5 w-5" />
+                            <span className="sr-only">Действия с плейлистом</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-white/60 glassmorphism">
+                        <DropdownMenuItem onClick={() => setIsRenameDialogOpen(true)}>
+                            <Pencil className="size-4 mr-1 text-black" />
+                            <span>Переименовать</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-red-500">
+                            <Trash2 className="size-4 mr-1 text-red-500" />
+                            <span>Удалить</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {/* Rename Dialog */}
+            <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Переименовать</DialogTitle>
+                        <DialogDescription>
+                            Введите новое название плейлиста
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleRenamePlaylist}>
+                        <div className="py-4">
+                            <Input
+                                value={newPlaylistName}
+                                onChange={(e) => setNewPlaylistName(e.target.value)}
+                                placeholder="Название плейлиста"
+                                className="w-full"
+                                autoFocus
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800">
+                                Сохранить
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Удалить плейлист?</DialogTitle>
+                        <DialogDescription>
+                            Вы уверены что хотите удалить "{playlist.name}"? Это действие необратимо.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Отмена
+                        </Button>
+                        <Button type="button" onClick={handleDeletePlaylist} className="bg-red-500 text-white hover:bg-red-700">
+                            Удалить
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 };
-/api/tracks/route.ts
-import path from 'path';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import * as NodeID3 from 'node-id3';
+/components/playlist grid
+"use client"
 
-import { NextRequest, NextResponse } from 'next/server';
-import { Track } from '@/db/models/model.tracks';
+import { useState, useEffect } from 'react';
+import { usePlaylist } from '@/hooks/usePlaylist';
+import { PlaylistPreview } from '@/components/shared/PlaylistPreview';
+import { Playlist } from '@/db/models/user.model';
+import { PlusCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
-// Generate a consistent ID based on the file properties
-function generateConsistentId(filename: string, fileSize: number): string {
-  const hash = crypto.createHash('md5');
-  hash.update(`${filename}-${fileSize}`);
-  return hash.digest('hex');
-}
+export const PlaylistGrid = () => {
+    const { playlists, isLoading, createNewPlaylist, refreshPlaylists } = usePlaylist();
+    const [newPlaylistName, setNewPlaylistName] = useState('');
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-async function fileHash(filePath: string): Promise<string> {
-  const fileBuffer = await fs.readFile(filePath);
-  const hashSum = crypto.createHash('sha256');
-  hashSum.update(fileBuffer);
-  return hashSum.digest('hex');
-}
+    useEffect(() => {
+        refreshPlaylists();
+    }, [refreshPlaylists]);
 
-const coverCache: { [key: string]: string } = {};
+    const handleCreatePlaylist = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
-  if (!coverCache[hash]) {
-    await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
-    coverCache[hash] = `/covers/${coverFilename}`;
-  }
-  return coverCache[hash];
-}
+        if (!newPlaylistName.trim()) return;
 
-async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
-  const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
+        const newPlaylist = await createNewPlaylist(newPlaylistName);
 
-  try {
-    const filenames = await fs.readdir(tracksDirectory);
-    const tracksData: Track[] = [];
-
-    // Filter filenames if requestedTracks is provided
-    const filteredFilenames = requestedTracks && requestedTracks.length > 0
-      ? filenames.filter(filename => requestedTracks.includes(filename))
-      : filenames;
-
-    for (const filename of filteredFilenames) {
-      if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
-        const filePath = path.join(tracksDirectory, filename);
-        const stats = await fs.stat(filePath);
-        
-        // Generate consistent ID based on filename and filesize
-        const fileId = generateConsistentId(filename, stats.size);
-        
-        const fileType = path.extname(filename).toLowerCase().substring(1);
-        let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
-        let author: string | undefined;
-        let album: string | undefined;
-        let cover: string | undefined = '/default-cover.jpg';
-
-        if (path.extname(filename).toLowerCase() === '.mp3') {
-          try {
-            const tags = NodeID3.read(filePath);
-            if (tags) {
-              title = tags.title || title;
-              author = tags.artist || tags.composer;
-              album = tags.album;
-
-              // Handle cover image from ID3 tags
-              if (
-                tags.image &&
-                typeof tags.image !== 'string' &&
-                tags.image.imageBuffer
-              ) {
-                try {
-                  const hash = await fileHash(filePath);
-                  const coverFilename = `${hash}-cover.jpg`;
-                  const coverPath = path.join(process.cwd(), 'public', 'covers');
-                  await fs.mkdir(coverPath, { recursive: true });
-
-                  if (!coverCache[hash]) {
-                    // Save the cover to public folder for serving only if it's not in the cache
-                    try {
-                      cover = await getCoverFromCache(hash, coverFilename, tags.image.imageBuffer);
-                    } catch (err) {
-                      console.error(`Error saving cover image for ${filename}:`, err);
-                      cover = `/default-cover.png`;
-                    }
-                  } else {
-                    cover = coverCache[hash];
-                  }
-                } catch (err) {
-                  console.error(`Error saving cover image for ${filename}:`, err);
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`Error reading ID3 tags from ${filename}:`, error);
-          }
+        if (newPlaylist) {
+            setNewPlaylistName('');
+            setIsCreateDialogOpen(false);
+            refreshPlaylists();
         }
+    };
 
-        tracksData.push({
-          id: fileId,
-          title: title,
-          author: author || 'Unknown Artist',
-          album: album || 'Unknown Album',
-          src: `/tracks/${filename}`,
-          cover: cover,
-          type: fileType,
-        });
-      }
+    if (isLoading) {
+        return <div className="text-center py-8">Loading playlists...</div>;
     }
 
-    return tracksData;
-  } catch (error) {
-    console.error("Error reading tracks directory:", error);
-    return [];
-  }
-}
-
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const requestedTracks = searchParams.getAll('tracks');
-
-  const tracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
-  return NextResponse.json(tracks);
-}
-/components/FetchTracks.tsx
-"use client"
-
-import Image from 'next/image';
-
-import { memo, useCallback } from 'react';
-import { Play, Pause, Music } from 'lucide-react';
-import { useAudio } from '@/components/player/AudioContext';
-import { LikeButton } from '@/components/shared/LikeButton';
-
-interface FetchTracksProps {
-  tracks: Track[];
-  isLoading: boolean;
-  error: string | null;
-  handleTrackSelect: (index: number) => void;
-  layout?: 'blocks' | 'list';
-  variant?: 'flex' | 'grid';
-}
-
-export const FetchTracks = memo(({
-  tracks,
-  isLoading,
-  error,
-  handleTrackSelect,
-  layout = 'blocks',
-  variant = 'flex'
-}: FetchTracksProps) => {
-  const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
-
-  // Format time display (e.g., 01:45)
-  const formatTime = useCallback((time: number): string => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }, []);
-
-  // Check if a track is the currently playing track
-  const isTrackPlaying = (track: Track) => {
-    if (!isPlaying) return false;
-
-    const currentTrack = currentTracks[currentTrackIndex];
-    return currentTrack && currentTrack.id === track.id;
-  };
-
-  if (isLoading) {
-    return <div className="text-start py-4">Заргужаем песни...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center text-red-500 py-4">{error}</div>;
-  }
-
-  if (tracks.length === 0) {
-    return <div className="text-start py-4">Песни не найдены.</div>;
-  }
-
-  // Render tracks in block layout (grid or flex of cards)
-  if (layout === 'blocks') {
     return (
-      <div className={variant === 'grid'
-        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-        : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
-      }>
-        {tracks.map((track, index) => (
-          <div
-            key={track.id}
-            className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
-          >
-            <div
-              className="relative w-full"
-              onClick={() => handleTrackSelect(index)}
-            >
-              <Image
-                src={track.cover || '/default-cover.jpg'}
-                alt={track.title}
-                width={200}
-                height={200}
-                className="rounded-lg w-full object-cover"
-              />
-              <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
-                {isTrackPlaying(track) ? (
-                  <Pause className="w-8 h-8 text-white" />
-                ) : (
-                  <Play className="w-8 h-8 text-white" />
-                )}
-              </div>
+        <div className="w-full">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Ваши плейлисты</h2>
+                <Button
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    className="flex items-center gap-2 bg-purple-200/50 text-purple-800 hover:bg-purple-300/50"
+                >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Новый плейлист</span>
+                </Button>
             </div>
-            <div className="mt-2 sm:mt-4 text-start w-full flex items-center justify-between">
-              <div onClick={() => handleTrackSelect(index)}>
-                <h3 className="font-semibold">{track.title}</h3>
-                <p className="text-sm text-gray-500">{track.author}</p>
-              </div>
-              <LikeButton trackId={track.id} size="md" className="ml-2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
 
-  // Render tracks in list layout (Spotify-like list)
-  return (
-    <div className="w-full border border-gray-200 rounded-md divide-y">
-      {tracks.map((track, index) => (
-        <div
-          key={track.id}
-          className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer ${isTrackPlaying(track) ? 'bg-gray-50' : ''}`}
-        >
-          <div
-            className="flex items-center flex-1 min-w-0"
-            onClick={() => handleTrackSelect(index)}
-          >
-            <div className="relative flex-shrink-0 w-12 h-12 mr-3">
-              {track.cover ? (
-                <Image
-                  src={track.cover}
-                  alt={track.title}
-                  width={48}
-                  height={48}
-                  className="rounded object-cover"
-                />
-              ) : (
-                <div className="flex items-center justify-center bg-gray-200 rounded w-full h-full">
-                  <Music className="w-6 h-6 text-gray-500" />
+            {playlists.length === 0 ? (
+                <div className="text-center py-8 bg-neutral-100 rounded-xl p-8">
+                    <p className="text-neutral-500 mb-4">У вас пока нет плейлистов.</p>
+                    <Button
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="bg-purple-200/50 text-purple-800 hover:bg-purple-300/50"
+                    >
+                        Создайте свой первый плейлист
+                    </Button>
                 </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                {isTrackPlaying(track) ? (
-                  <Pause className="w-6 h-6 text-white" />
-                ) : (
-                  <Play className="w-6 h-6 text-white" />
-                )}
-              </div>
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <h4 className="font-medium truncate">{track.title}</h4>
-              <p className="text-sm text-gray-500 truncate">{track.author}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {isTrackPlaying(track) ? (
-              <span className="text-xs font-medium text-green-600 w-16 text-right">Playing</span>
             ) : (
-              <span className="text-xs text-gray-500 w-16 text-right"></span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                    {playlists.map((playlist) => (
+                        <PlaylistPreview key={playlist.id} playlist={playlist} />
+                    ))}
+                </div>
             )}
-            <LikeButton trackId={track.id} size="md" />
-          </div>
+
+            {/* Create Playlist Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Создать новый плейлист</DialogTitle>
+                        <DialogDescription>
+                            Введите название для плейлиста. Позже вы можете добавить в них песни
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreatePlaylist}>
+                        <div className="py-4">
+                            <Input
+                                value={newPlaylistName}
+                                onChange={(e) => setNewPlaylistName(e.target.value)}
+                                placeholder="Название плейлиста"
+                                className="w-full"
+                                autoFocus
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800">
+                                Создать
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
-      ))}
-    </div>
-  );
-});
-/page.tsx
-"use client"
-
-import { useTracks } from "@/hooks/useTracks";
-import { FetchTracks } from "@/components/shared/FetchTracks";
-
-const Page = () => {
-    const collection = useTracks("Fell In Love.mp3", "VOGUE - Lil Tecca.mp3");
-    const cartiCollection = useTracks("Magnolia.mp3", "Racks Up.mp3");
-
-    return (
-        <section className="flex flex-col w-full">
-            <div className="container">
-                <div className="flex flex-col gap-4 mb-8">
-                    <div className="flex flex-row items-center justify-between">
-                        <h1 className="title-text">Lil Tecca</h1>
-                        <p className="link-text">Смотреть все</p>
-                    </div>
-                    <FetchTracks
-                        tracks={collection.tracks}
-                        isLoading={collection.isLoading}
-                        error={collection.error}
-                        handleTrackSelect={collection.handleTrackSelect}
-                    />
-                </div>
-                <div className="flex flex-col gap-4 mb-8">
-                    <div className="flex flex-row items-center justify-between">
-                        <h1 className="title-text">PlayboiCarti</h1>
-                        <p className="link-text">Смотреть все</p>
-                    </div>
-                    <FetchTracks
-                        tracks={cartiCollection.tracks}
-                        isLoading={cartiCollection.isLoading}
-                        error={cartiCollection.error}
-                        handleTrackSelect={cartiCollection.handleTrackSelect}
-                    />
-                </div>
-            </div>
-        </section>
     );
 };
-
-export default Page;

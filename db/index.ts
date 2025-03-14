@@ -1,13 +1,13 @@
 import Dexie, { Table } from 'dexie';
-import { Track } from './models/model.tracks';
-import { User } from './models/model.user';
+import { Track } from './models/tracks.model';
+import { User } from './models/user.model';
 
-export class MusicAppDatabase extends Dexie {
+export class Database extends Dexie {
     tracks!: Table<Track>;
     users!: Table<User>;
 
     constructor() {
-        super('MusicAppDatabase');
+        super('Database');
         this.version(1).stores({
             tracks: 'id, title, author, album, src, cover, type',
             users: 'id, name, onboarding',
@@ -16,6 +16,6 @@ export class MusicAppDatabase extends Dexie {
 }
 
 // Create a single instance of the database to be used throughout the app
-const db = new MusicAppDatabase();
+const db = new Database();
 
 export default db;

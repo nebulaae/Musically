@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import * as NodeID3 from 'node-id3';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Track } from '@/db/models/model.tracks';
+import { Track } from '@/db/models/tracks.model';
 
 // Generate a consistent ID based on the file properties
 function generateConsistentId(filename: string, fileSize: number): string {

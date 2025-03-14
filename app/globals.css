@@ -144,7 +144,7 @@
 
   .glassmorphism {
     background: inherit;
-    backdrop-filter: blur(18px);
+    backdrop-filter: blur(24px);
   }
 
   .title-text {
