@@ -1,14 +1,4 @@
-db/models/model.tracks.ts
-export interface Track {
-    id: string;
-    title: string;
-    author?: string;
-    album?: string;
-    src: string;
-    cover?: string;
-    type?: string;
-}
-db/models/model.user.ts
+/db/models/user.model.ts
 export interface User {
     id: string;
     name: string;
@@ -23,63 +13,17 @@ export interface Playlist {
     tracks: string[]; // Array of track IDs
     createdAt: Date;
 }
-db/actions/action.tracks.ts
-import db from '../index';
-import { Track } from '../models/model.tracks';
-
-// Fetch tracks from the API and store them in the database
-export async function syncTracksFromAPI(): Promise<Track[]> {
-    try {
-        // Fetch tracks from the API
-        const response = await fetch('/api/tracks');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch tracks: ${response.status}`);
-        }
-
-        const tracks = await response.json();
-
-        // Store tracks in the database
-        await db.transaction('rw', db.tracks, async () => {
-            // Clear existing tracks
-            await db.tracks.clear();
-            // Add new tracks
-            await db.tracks.bulkAdd(tracks);
-        });
-
-        return tracks;
-    } catch (error) {
-        console.error('Error syncing tracks:', error);
-        throw error;
-    }
+/db/models/tracks.model.ts
+export interface Track {
+    id: string;
+    title: string;
+    author?: string;
+    album?: string;
+    src: string;
+    cover?: string;
+    type?: string;
 }
-
-// Get all tracks from the database
-export async function getAllTracks(): Promise<Track[]> {
-    return await db.tracks.toArray();
-}
-
-// Get a track by ID
-export async function getTrackById(id: string): Promise<Track | undefined> {
-    return await db.tracks.get(id);
-}
-
-// Get tracks by IDs
-export async function getTracksByIds(ids: string[]): Promise<Track[]> {
-    return await db.tracks.where('id').anyOf(ids).toArray();
-}
-
-// Search tracks by title or author
-export async function searchTracks(query: string): Promise<Track[]> {
-    const lowerQuery = query.toLowerCase();
-
-    return await db.tracks.filter((track: Track) => {
-        const titleMatch = track.title.toLowerCase().includes(lowerQuery);
-        const authorMatch = track.author ? track.author.toLowerCase().includes(lowerQuery) : false;
-
-        return titleMatch || authorMatch;
-    }).toArray();
-}
-db/actions/action.user.ts
+/db/actions/user.actions.ts
 import { v4 as uuidv4 } from 'uuid';
 import db from '../index';
 import { User, Playlist } from '../models/model.user';
@@ -274,143 +218,387 @@ export async function getAllPlaylists(): Promise<Playlist[]> {
     const user = await getCurrentUser();
     return user.playlists;
 }
-hooks/useDbInit.ts
-import { useState, useEffect } from 'react';
-import { syncTracksFromAPI } from '@/db/actions/action.tracks';
-import { getCurrentUser } from '@/db/actions/action.user';
+/db/actions/tracks.actions.ts
+import db from '../index';
+import { Track } from '../models/model.tracks';
 
-export function useDbInit() {
-    const [isInitializing, setIsInitializing] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    useEffect(() => {
-        async function initializeDatabase() {
-            try {
-                // Initialize the user (creates one if it doesn't exist)
-                await getCurrentUser();
-
-                // Fetch tracks from API and store them in the database
-                await syncTracksFromAPI();
-
-                setIsInitializing(false);
-            } catch (err) {
-                console.error('Error initializing database:', err);
-                setError(err instanceof Error ? err : new Error('Unknown error during database initialization'));
-                setIsInitializing(false);
-            }
+export async function syncTracksFromAPI(): Promise<Track[]> {
+    try {
+        // Fetch tracks from the API
+        const response = await fetch('/api/tracks');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch tracks: ${response.status}`);
         }
 
-        initializeDatabase();
-    }, []);
+        const newTracks: Track[] = await response.json();
 
-    return { isInitializing, error };
-}
-hooks/useMusicActions.ts
-import { useState, useEffect, useCallback } from 'react';
-import {
-    isSongLiked,
-    likeSong,
-    unlikeSong,
-    createPlaylist,
-    addTrackToPlaylist,
-    getAllPlaylists
-} from '@/db/actions/action.user';
-import { Playlist } from '@/db/models/model.user';
+        // Store tracks in the database while preserving existing tracks
+        await db.transaction('rw', db.tracks, async () => {
+            // Get existing tracks
+            const existingTracks = await db.tracks.toArray();
+            const existingIds = new Set(existingTracks.map(track => track.id));
 
-export const useMusicActions = (trackId?: string) => {
-    const [isLiked, setIsLiked] = useState(false);
-    const [playlists, setPlaylists] = useState<Playlist[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+            // Add only new tracks
+            const tracksToAdd = newTracks.filter(track => !existingIds.has(track.id));
 
-    useEffect(() => {
-        async function loadData() {
-            if (!trackId) {
-                setIsLoading(false);
-                return;
+            // Update existing tracks
+            const tracksToUpdate = newTracks.filter(track => existingIds.has(track.id));
+
+            // Add new tracks
+            if (tracksToAdd.length > 0) {
+                await db.tracks.bulkAdd(tracksToAdd);
             }
+
+            // Update existing tracks
+            for (const track of tracksToUpdate) {
+                await db.tracks.update(track.id, track);
+            }
+        });
+
+        return newTracks;
+    } catch (error) {
+        console.error('Error syncing tracks:', error);
+        throw error;
+    }
+}
+
+// Get all tracks from the database
+export async function getAllTracks(): Promise<Track[]> {
+    return await db.tracks.toArray();
+}
+
+// Get a track by ID
+export async function getTrackById(id: string): Promise<Track | undefined> {
+    return await db.tracks.get(id);
+}
+
+// Get tracks by IDs
+export async function getTracksByIds(ids: string[]): Promise<Track[]> {
+    return await db.tracks.where('id').anyOf(ids).toArray();
+}
+
+// Search tracks by title or author
+export async function searchTracks(query: string): Promise<Track[]> {
+    const lowerQuery = query.toLowerCase();
+
+    return await db.tracks.filter((track: Track) => {
+        const titleMatch = track.title.toLowerCase().includes(lowerQuery);
+        const authorMatch = track.author ? track.author.toLowerCase().includes(lowerQuery) : false;
+
+        return titleMatch || authorMatch;
+    }).toArray();
+}
+/db/index.ts
+import Dexie, { Table } from 'dexie';
+import { Track } from './models/model.tracks';
+import { User } from './models/model.user';
+
+export class MusicAppDatabase extends Dexie {
+    tracks!: Table<Track>;
+    users!: Table<User>;
+
+    constructor() {
+        super('MusicAppDatabase');
+        this.version(1).stores({
+            tracks: 'id, title, author, album, src, cover, type',
+            users: 'id, name, onboarding',
+        });
+    }
+}
+
+// Create a single instance of the database to be used throughout the app
+const db = new MusicAppDatabase();
+
+export default db;
+/hooks/useTracks.ts
+"use client"
+
+import { useState, useEffect, useCallback } from "react";
+import { useAudio } from "@/components/player/AudioContext";
+
+export const useTracks = (...trackNames: string[]) => {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { 
+    playTrackAtIndex,
+    isPlaying,
+    togglePlayPause,
+    currentTime,
+    duration
+  } = useAudio();
+
+  useEffect(() => {
+    const fetchTracks = async () => {
+      try {
+        setIsLoading(true);
+
+        let url = '/api/tracks';
+        // If track names are provided, add them as query parameters
+        if (trackNames.length > 0) {
+          const queryParams = new URLSearchParams();
+          trackNames.forEach(name => queryParams.append('tracks', name));
+          url = `${url}?${queryParams.toString()}`;
+        }
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch tracks: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          setTracks(data);
+        } else {
+          setError('No tracks found. Please add some music files to the tracks directory.');
+        }
+      } catch (err) {
+        console.error('Error fetching tracks:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error fetching tracks');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTracks();
+  }, [trackNames.join(',')]); // Re-fetch when track list changes
+
+  // Handle track selection
+  const handleTrackSelect = useCallback((index: number) => {
+    playTrackAtIndex(index, tracks);
+  }, [playTrackAtIndex, tracks]);
+
+  return {
+    tracks,
+    isPlaying,
+    isLoading,
+    error,
+    currentTime,
+    duration,
+    handleTrackSelect,
+    handlePlayPauseToggle: togglePlayPause
+  };
+};
+/components/shared/LikeButton.tsx
+"use client"
+
+import { Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { isSongLiked, likeSong, unlikeSong } from '@/db/actions/action.user';
+
+interface LikeButtonProps {
+    trackId: string;
+    size?: 'sm' | 'md' | 'lg';
+    className?: string;
+    onLikeStateChange?: (isLiked: boolean) => void;
+}
+
+export const LikeButton = ({ trackId, size = 'md', className = '', onLikeStateChange }: LikeButtonProps) => {
+    const [isLiked, setIsLiked] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Get sizes based on the size prop
+    const sizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5';
+
+    // Check initial like status
+    useEffect(() => {
+        const checkLikeStatus = async () => {
+            if (!trackId) return;
 
             try {
                 setIsLoading(true);
-
-                // Check if song is liked
                 const liked = await isSongLiked(trackId);
                 setIsLiked(liked);
-
-                // Get all playlists
-                const userPlaylists = await getAllPlaylists();
-                setPlaylists(userPlaylists);
             } catch (error) {
-                console.error('Error loading music actions data:', error);
+                console.error('Error checking if song is liked:', error);
             } finally {
                 setIsLoading(false);
             }
-        }
+        };
 
-        loadData();
+        checkLikeStatus();
     }, [trackId]);
 
-    const toggleLike = useCallback(async () => {
-        if (!trackId) return;
+    const toggleLike = async (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent event bubbling (important for track selection)
+
+        if (!trackId || isLoading) return;
 
         try {
+            setIsLoading(true);
+
             if (isLiked) {
                 await unlikeSong(trackId);
             } else {
                 await likeSong(trackId);
             }
 
-            setIsLiked(!isLiked);
+            const newLikedState = !isLiked;
+            setIsLiked(newLikedState);
+
+            // Notify parent component if callback provided
+            if (onLikeStateChange) {
+                onLikeStateChange(newLikedState);
+            }
         } catch (error) {
             console.error('Error toggling like status:', error);
+        } finally {
+            setIsLoading(false);
         }
-    }, [trackId, isLiked]);
-
-    const addToPlaylist = useCallback(async (playlistId: string) => {
-        if (!trackId) return;
-
-        try {
-            await addTrackToPlaylist(playlistId, trackId);
-            return true;
-        } catch (error) {
-            console.error('Error adding to playlist:', error);
-            return false;
-        }
-    }, [trackId]);
-
-    const createNewPlaylist = useCallback(async (name: string) => {
-        try {
-            const newPlaylist = await createPlaylist(name);
-
-            if (trackId) {
-                await addTrackToPlaylist(newPlaylist.id, trackId);
-            }
-
-            setPlaylists(prev => [...prev, newPlaylist]);
-            return newPlaylist;
-        } catch (error) {
-            console.error('Error creating playlist:', error);
-            return null;
-        }
-    }, [trackId]);
-
-    return {
-        isLiked,
-        playlists,
-        isLoading,
-        toggleLike,
-        addToPlaylist,
-        createNewPlaylist
     };
+
+    return (
+        <button
+            onClick={toggleLike}
+            disabled={isLoading}
+            className={`transition-all duration-200 ${className}`}
+            aria-label={isLiked ? "Unlike" : "Like"}
+            title={isLiked ? "Unlike" : "Like"}
+        >
+            <Heart
+                className={`${sizeClass} ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 hover:text-gray-700'} ${isLoading ? 'opacity-50' : ''}`}
+            />
+        </button>
+    );
+};
+/api/tracks/route.ts
+import path from 'path';
+import crypto from 'crypto';
+import fs from 'fs/promises';
+import * as NodeID3 from 'node-id3';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { Track } from '@/db/models/model.tracks';
+
+// Generate a consistent ID based on the file properties
+function generateConsistentId(filename: string, fileSize: number): string {
+  const hash = crypto.createHash('md5');
+  hash.update(`${filename}-${fileSize}`);
+  return hash.digest('hex');
 }
-components/shared/FetchTracks.tsx
+
+async function fileHash(filePath: string): Promise<string> {
+  const fileBuffer = await fs.readFile(filePath);
+  const hashSum = crypto.createHash('sha256');
+  hashSum.update(fileBuffer);
+  return hashSum.digest('hex');
+}
+
+const coverCache: { [key: string]: string } = {};
+
+async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
+  if (!coverCache[hash]) {
+    await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
+    coverCache[hash] = `/covers/${coverFilename}`;
+  }
+  return coverCache[hash];
+}
+
+async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
+  const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
+
+  try {
+    const filenames = await fs.readdir(tracksDirectory);
+    const tracksData: Track[] = [];
+
+    // Filter filenames if requestedTracks is provided
+    const filteredFilenames = requestedTracks && requestedTracks.length > 0
+      ? filenames.filter(filename => requestedTracks.includes(filename))
+      : filenames;
+
+    for (const filename of filteredFilenames) {
+      if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
+        const filePath = path.join(tracksDirectory, filename);
+        const stats = await fs.stat(filePath);
+        
+        // Generate consistent ID based on filename and filesize
+        const fileId = generateConsistentId(filename, stats.size);
+        
+        const fileType = path.extname(filename).toLowerCase().substring(1);
+        let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
+        let author: string | undefined;
+        let album: string | undefined;
+        let cover: string | undefined = '/default-cover.jpg';
+
+        if (path.extname(filename).toLowerCase() === '.mp3') {
+          try {
+            const tags = NodeID3.read(filePath);
+            if (tags) {
+              title = tags.title || title;
+              author = tags.artist || tags.composer;
+              album = tags.album;
+
+              // Handle cover image from ID3 tags
+              if (
+                tags.image &&
+                typeof tags.image !== 'string' &&
+                tags.image.imageBuffer
+              ) {
+                try {
+                  const hash = await fileHash(filePath);
+                  const coverFilename = `${hash}-cover.jpg`;
+                  const coverPath = path.join(process.cwd(), 'public', 'covers');
+                  await fs.mkdir(coverPath, { recursive: true });
+
+                  if (!coverCache[hash]) {
+                    // Save the cover to public folder for serving only if it's not in the cache
+                    try {
+                      cover = await getCoverFromCache(hash, coverFilename, tags.image.imageBuffer);
+                    } catch (err) {
+                      console.error(`Error saving cover image for ${filename}:`, err);
+                      cover = `/default-cover.png`;
+                    }
+                  } else {
+                    cover = coverCache[hash];
+                  }
+                } catch (err) {
+                  console.error(`Error saving cover image for ${filename}:`, err);
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error reading ID3 tags from ${filename}:`, error);
+          }
+        }
+
+        tracksData.push({
+          id: fileId,
+          title: title,
+          author: author || 'Unknown Artist',
+          album: album || 'Unknown Album',
+          src: `/tracks/${filename}`,
+          cover: cover,
+          type: fileType,
+        });
+      }
+    }
+
+    return tracksData;
+  } catch (error) {
+    console.error("Error reading tracks directory:", error);
+    return [];
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const requestedTracks = searchParams.getAll('tracks');
+
+  const tracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
+  return NextResponse.json(tracks);
+}
+/components/FetchTracks.tsx
 "use client"
 
 import Image from 'next/image';
 
-import { motion } from 'framer-motion';
 import { memo, useCallback } from 'react';
 import { Play, Pause, Music } from 'lucide-react';
 import { useAudio } from '@/components/player/AudioContext';
+import { LikeButton } from '@/components/shared/LikeButton';
 
 interface FetchTracksProps {
   tracks: Track[];
@@ -469,9 +657,11 @@ export const FetchTracks = memo(({
           <div
             key={track.id}
             className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
-            onClick={() => handleTrackSelect(index)}
           >
-            <div className="relative w-full">
+            <div
+              className="relative w-full"
+              onClick={() => handleTrackSelect(index)}
+            >
               <Image
                 src={track.cover || '/default-cover.jpg'}
                 alt={track.title}
@@ -487,9 +677,12 @@ export const FetchTracks = memo(({
                 )}
               </div>
             </div>
-            <div className="mt-2 sm:mt-4 text-start w-full">
-              <h3 className="font-semibold">{track.title}</h3>
-              <p className="text-sm text-gray-500">{track.author}</p>
+            <div className="mt-2 sm:mt-4 text-start w-full flex items-center justify-between">
+              <div onClick={() => handleTrackSelect(index)}>
+                <h3 className="font-semibold">{track.title}</h3>
+                <p className="text-sm text-gray-500">{track.author}</p>
+              </div>
+              <LikeButton trackId={track.id} size="md" className="ml-2" />
             </div>
           </div>
         ))}
@@ -504,9 +697,11 @@ export const FetchTracks = memo(({
         <div
           key={track.id}
           className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer ${isTrackPlaying(track) ? 'bg-gray-50' : ''}`}
-          onClick={() => handleTrackSelect(index)}
         >
-          <div className="flex items-center flex-1 min-w-0">
+          <div
+            className="flex items-center flex-1 min-w-0"
+            onClick={() => handleTrackSelect(index)}
+          >
             <div className="relative flex-shrink-0 w-12 h-12 mr-3">
               {track.cover ? (
                 <Image
@@ -540,321 +735,55 @@ export const FetchTracks = memo(({
             {isTrackPlaying(track) ? (
               <span className="text-xs font-medium text-green-600 w-16 text-right">Playing</span>
             ) : (
-              <span className="text-xs text-gray-500 w-16 text-right">
-
-              </span>
+              <span className="text-xs text-gray-500 w-16 text-right"></span>
             )}
+            <LikeButton trackId={track.id} size="md" />
           </div>
         </div>
       ))}
     </div>
   );
 });
-components/player/BottomPlayer.tsx
+/page.tsx
 "use client"
 
-import Image from 'next/image';
+import { useTracks } from "@/hooks/useTracks";
+import { FetchTracks } from "@/components/shared/FetchTracks";
 
-import { motion } from 'framer-motion';
-import { Slider } from "@/components/ui/slider";
-import { Toggle } from "@/components/ui/toggle";
-import {
-    Volume1,
-    Volume2,
-    VolumeX,
-    ChevronLeft,
-    ChevronRight,
-    Play,
-    Pause,
-    Minimize2,
-    Loader2,
-    Repeat,
-    Shuffle
-} from 'lucide-react';
-
-import {
-    useState,
-    useCallback,
-    memo,
-    useEffect
-} from 'react';
-import { useAudio } from './AudioContext';
-
-const BottomPlayer = () => {
-    const {
-        tracks,
-        currentTrackIndex,
-        isPlaying,
-        volume,
-        currentTime,
-        duration,
-        togglePlayPause,
-        nextTrack,
-        prevTrack,
-        setVolume,
-        seekTo,
-        hasNextTrack,
-        hasPrevTrack,
-        shuffleMode,
-        toggleShuffleMode,
-        repeatMode,
-        toggleRepeatMode
-    } = useAudio();
-
-    const [isPlayerVisible, setIsPlayerVisible] = useState<boolean>(false);
-    const [isExpanded, setIsExpanded] = useState<boolean>(false);
-    const [isButtonDisabled, setIsButtonDisabled] = useState<boolean>(false);
-
-    const currentTrack = tracks?.[currentTrackIndex];
-    const hasShuffle = tracks && tracks.length > 1;
-
-    // Show player when there are tracks
-    useEffect(() => {
-        if (tracks && tracks.length > 0) {
-            setIsPlayerVisible(true);
-        } else {
-            setIsPlayerVisible(false);
-        }
-    }, [tracks]);
-
-    // Toggle play/pause with button disable safety
-    const handlePlayPauseToggle = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-
-        if (isButtonDisabled) return;
-
-        setIsButtonDisabled(true);
-
-        try {
-            togglePlayPause();
-        } catch (error) {
-            console.error("Error toggling play/pause:", error);
-        } finally {
-            // Re-enable button after a short delay
-            setTimeout(() => setIsButtonDisabled(false), 300);
-        }
-    }, [togglePlayPause, isButtonDisabled]);
-
-    // Handle volume change from slider
-    const handleVolumeChange = useCallback((value: number[]) => {
-        setVolume(value[0] / 100);
-    }, [setVolume]);
-
-    // Handle seeking in the song
-    const handleSeek = useCallback((value: number[]) => {
-        const newTime = (value[0] / 100) * duration;
-        seekTo(newTime);
-    }, [duration, seekTo]);
-
-    // Format time display (e.g., 01:45)
-    const formatTime = useCallback((time: number): string => {
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60);
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }, []);
-
-    // Calculate the current progress percentage
-    const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-    // Toggle expanded view
-    const toggleExpanded = useCallback(() => {
-        setIsExpanded(prev => !prev);
-    }, []);
-
-    // Handle next track click with button disable safety
-    const handleNextTrack = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-
-        if (isButtonDisabled || !hasNextTrack) return;
-
-        setIsButtonDisabled(true);
-
-        try {
-            nextTrack();
-        } catch (error) {
-            console.error("Error navigating to next track:", error);
-        } finally {
-            // Re-enable button after a short delay
-            setTimeout(() => setIsButtonDisabled(false), 300);
-        }
-    }, [nextTrack, hasNextTrack, isButtonDisabled]);
-
-    // Handle previous track click with button disable safety
-    const handlePrevTrack = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-
-        if (isButtonDisabled || !hasPrevTrack) return;
-
-        setIsButtonDisabled(true);
-
-        try {
-            prevTrack();
-        } catch (error) {
-            console.error("Error navigating to previous track:", error);
-        } finally {
-            // Re-enable button after a short delay
-            setTimeout(() => setIsButtonDisabled(false), 300);
-        }
-    }, [prevTrack, hasPrevTrack, isButtonDisabled]);
-
-    // Handle shuffle toggle
-    const handleShuffleToggle = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (hasShuffle) {
-            toggleShuffleMode();
-        }
-    }, [toggleShuffleMode, hasShuffle]);
-
-    // Handle repeat toggle
-    const handleRepeatToggle = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        toggleRepeatMode();
-    }, [toggleRepeatMode]);
-
-    // Don't render anything if no tracks or player is hidden
-    if (!isPlayerVisible || !tracks || tracks.length === 0 || !currentTrack) {
-        return null;
-    }
+const Page = () => {
+    const collection = useTracks("Fell In Love.mp3", "VOGUE - Lil Tecca.mp3");
+    const cartiCollection = useTracks("Magnolia.mp3", "Racks Up.mp3");
 
     return (
-        <motion.footer
-            className={`fixed ${isExpanded ? 'inset-0 bg-white' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'} bg-sidebar glassmorphism border-t-[1px] border-neutral-200 p-4 z-100`}
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-        >
-            <div className={`flex items-center justify-between ${isExpanded ? 'flex-col h-full' : 'flex-col md:flex-row'} gap-4 w-full`}>
-                {isExpanded && (
-                    <div className="self-end">
-                        <motion.button
-                            className="p-2 rounded-full hover:bg-gray-100"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpanded();
-                            }}
-                            whileTap={{ scale: 0.9 }}
-                        >
-                            <Minimize2 />
-                        </motion.button>
+        <section className="flex flex-col w-full">
+            <div className="container">
+                <div className="flex flex-col gap-4 mb-8">
+                    <div className="flex flex-row items-center justify-between">
+                        <h1 className="title-text">Lil Tecca</h1>
+                        <p className="link-text">Смотреть все</p>
                     </div>
-                )}
-
-                {/* Track Info */}
-                <div
-                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : ''}`}
-                    onClick={isExpanded ? undefined : toggleExpanded}
-                >
-                    <Image
-                        src={currentTrack?.cover || '/default-cover.jpg'}
-                        alt="Track Cover"
-                        width={isExpanded ? 300 : 48}
-                        height={isExpanded ? 300 : 48}
-                        className={`rounded-sm ${isExpanded ? 'rounded-xl shadow-xl' : ''}`}
+                    <FetchTracks
+                        tracks={collection.tracks}
+                        isLoading={collection.isLoading}
+                        error={collection.error}
+                        handleTrackSelect={collection.handleTrackSelect}
                     />
-                    <div className={`${isExpanded ? 'text-center' : ''}`}>
-                        <h4 className={`font-semibold ${isExpanded ? 'text-xl' : 'truncate max-w-[100px]'}`}>
-                            {currentTrack?.title || "No Track"}
-                        </h4>
-                        <p className={`text-sm text-gray-500 ${isExpanded ? '' : 'truncate max-w-[200px] md:max-w-full'}`}>
-                            {currentTrack?.author || "Unknown Artist"}
-                        </p>
-                    </div>
                 </div>
-
-                {/* Player Controls - Middle */}
-                <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row'} md:flex-1 justify-center`}>
-                    <div className="flex flex-col items-center justify-center gap-2 w-full">
-                        <div className={`flex items-center space-x-3 md:space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
-                            {/* Shuffle Button */}
-                            <motion.button
-                                className={`p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer text-purple-800 hover:bg-gray-100' : 'cursor-pointer hover:bg-gray-100'}`}
-                                onClick={handleShuffleToggle}
-                                whileTap={hasShuffle ? { scale: 0.9 } : undefined}
-                                disabled={!hasShuffle}
-                            >
-                                <Shuffle className={`font-thin w-5 h-5`} />
-                            </motion.button>
-
-                            {/* Previous Track Button */}
-                            <motion.button
-                                className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
-                                onClick={hasPrevTrack && !isButtonDisabled ? handlePrevTrack : undefined}
-                                whileTap={hasPrevTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
-                                disabled={!hasPrevTrack || isButtonDisabled}
-                            >
-                                <ChevronLeft className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
-                            </motion.button>
-
-                            {/* Play/Pause Button */}
-                            <motion.button
-                                className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                onClick={handlePlayPauseToggle}
-                                whileTap={!isButtonDisabled ? { scale: 0.9 } : undefined}
-                                disabled={isButtonDisabled}
-                            >
-                                {isButtonDisabled ? (
-                                    <Loader2 className={`${isExpanded ? 'w-8 h-8' : 'w-8 h-8'} animate-spin`} />
-                                ) : isPlaying ? (
-                                    <Pause className={isExpanded ? 'w-8 h-8' : 'w-8 h-8'} />
-                                ) : (
-                                    <Play className={isExpanded ? 'w-8 h-8' : 'w-8 h-8'} />
-                                )}
-                            </motion.button>
-
-                            {/* Next Track Button */}
-                            <motion.button
-                                className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
-                                onClick={hasNextTrack && !isButtonDisabled ? handleNextTrack : undefined}
-                                whileTap={hasNextTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
-                                disabled={!hasNextTrack || isButtonDisabled}
-                            >
-                                <ChevronRight className={`font-thin ${isExpanded ? 'w-8 h-8' : 'w-8 h-8'}`} />
-                            </motion.button>
-
-                            {/* Repeat Button */}
-                            <motion.div whileTap={{ scale: 0.9 }}>
-                                <Toggle
-                                    className={`rounded-full`}
-                                    pressed={repeatMode}
-                                    onPressedChange={() => toggleRepeatMode()}
-                                    size="lg"
-                                >
-                                    <Repeat className={`font-thin w-10 h-10`} />
-                                </Toggle>
-                            </motion.div>
-                        </div>
-                        {/* Song Progress Slider */}
-                        <div className="flex items-center w-full max-w-[500px] space-x-2">
-                            <span className="text-sm text-gray-500">{formatTime(currentTime)}</span>
-                            <Slider
-                                value={[progressPercentage]}
-                                max={100}
-                                step={0.1}
-                                onValueChange={handleSeek}
-                                aria-label="song progress"
-                                className="flex-grow"
-                                disabled={isButtonDisabled}
-                            />
-                            <span className="text-sm text-gray-500">{formatTime(duration || 0)}</span>
-                        </div>
+                <div className="flex flex-col gap-4 mb-8">
+                    <div className="flex flex-row items-center justify-between">
+                        <h1 className="title-text">PlayboiCarti</h1>
+                        <p className="link-text">Смотреть все</p>
                     </div>
-                </div>
-
-                {/* Volume Control */}
-                <div className="hidden md:flex items-center space-x-2 md:w-40 justify-end order-3">
-                    {volume === 0 ? <VolumeX className='w-5 h-5' /> : volume < 0.5 ? <Volume1 className='w-5 h-5' /> : <Volume2 className='w-5 h-5' />}
-                    <Slider
-                        value={[volume * 100]}
-                        max={100}
-                        step={1}
-                        onValueChange={handleVolumeChange}
-                        aria-label="volume"
-                        className={`${isExpanded ? 'w-full' : 'w-24'} flex-grow md:flex-grow-0`}
+                    <FetchTracks
+                        tracks={cartiCollection.tracks}
+                        isLoading={cartiCollection.isLoading}
+                        error={cartiCollection.error}
+                        handleTrackSelect={cartiCollection.handleTrackSelect}
                     />
                 </div>
             </div>
-        </motion.footer>
+        </section>
     );
 };
 
-export default memo(BottomPlayer);
+export default Page;

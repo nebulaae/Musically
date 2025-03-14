@@ -1,7 +1,6 @@
 import db from '../index';
 import { Track } from '../models/model.tracks';
 
-// Fetch tracks from the API and store them in the database
 export async function syncTracksFromAPI(): Promise<Track[]> {
     try {
         // Fetch tracks from the API
@@ -10,17 +9,32 @@ export async function syncTracksFromAPI(): Promise<Track[]> {
             throw new Error(`Failed to fetch tracks: ${response.status}`);
         }
 
-        const tracks = await response.json();
+        const newTracks: Track[] = await response.json();
 
-        // Store tracks in the database
+        // Store tracks in the database while preserving existing tracks
         await db.transaction('rw', db.tracks, async () => {
-            // Clear existing tracks
-            await db.tracks.clear();
+            // Get existing tracks
+            const existingTracks = await db.tracks.toArray();
+            const existingIds = new Set(existingTracks.map(track => track.id));
+
+            // Add only new tracks
+            const tracksToAdd = newTracks.filter(track => !existingIds.has(track.id));
+
+            // Update existing tracks
+            const tracksToUpdate = newTracks.filter(track => existingIds.has(track.id));
+
             // Add new tracks
-            await db.tracks.bulkAdd(tracks);
+            if (tracksToAdd.length > 0) {
+                await db.tracks.bulkAdd(tracksToAdd);
+            }
+
+            // Update existing tracks
+            for (const track of tracksToUpdate) {
+                await db.tracks.update(track.id, track);
+            }
         });
 
-        return tracks;
+        return newTracks;
     } catch (error) {
         console.error('Error syncing tracks:', error);
         throw error;

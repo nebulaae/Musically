@@ -3,8 +3,15 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import * as NodeID3 from 'node-id3';
 
-import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
+import { Track } from '@/db/models/model.tracks';
+
+// Generate a consistent ID based on the file properties
+function generateConsistentId(filename: string, fileSize: number): string {
+  const hash = crypto.createHash('md5');
+  hash.update(`${filename}-${fileSize}`);
+  return hash.digest('hex');
+}
 
 async function fileHash(filePath: string): Promise<string> {
   const fileBuffer = await fs.readFile(filePath);
@@ -38,7 +45,11 @@ async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
     for (const filename of filteredFilenames) {
       if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
         const filePath = path.join(tracksDirectory, filename);
-        const id = uuidv4();
+        const stats = await fs.stat(filePath);
+        
+        // Generate consistent ID based on filename and filesize
+        const fileId = generateConsistentId(filename, stats.size);
+        
         const fileType = path.extname(filename).toLowerCase().substring(1);
         let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
         let author: string | undefined;
@@ -87,7 +98,7 @@ async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
         }
 
         tracksData.push({
-          id: id,
+          id: fileId,
           title: title,
           author: author || 'Unknown Artist',
           album: album || 'Unknown Album',

@@ -190,17 +190,17 @@ const BottomPlayer = () => {
 
                 {/* Track Info */}
                 <div
-                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : ''}`}
+                    className={`flex items-center space-x-4 flex-grow md:flex-grow-0 order-1 md:order-none cursor-pointer ${isExpanded ? 'mt-10 flex-col justify-center space-x-0 space-y-4' : 'w-full md:w-auto justify-between sm:justify-center px-4 sm:px-0'}`}
                     onClick={isExpanded ? undefined : toggleExpanded}
                 >
-                    <Image
-                        src={currentTrack?.cover || '/default-cover.jpg'}
-                        alt="Track Cover"
-                        width={isExpanded ? 300 : 48}
-                        height={isExpanded ? 300 : 48}
-                        className={`rounded-sm ${isExpanded ? 'rounded-xl shadow-xl' : ''}`}
-                    />
-                    <div className={`flex items-center ${isExpanded ? 'flex-col text-center' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isExpanded ? 'flex-col text-center' : ''}`}>
+                        <Image
+                            src={currentTrack?.cover || '/default-cover.jpg'}
+                            alt="Track Cover"
+                            width={isExpanded ? 300 : 48}
+                            height={isExpanded ? 300 : 48}
+                            className={`rounded-sm ${isExpanded ? 'rounded-xl shadow-xl' : ''}`}
+                        />
                         <div>
                             <h4 className={`font-semibold ${isExpanded ? 'text-xl' : 'truncate max-w-[100px]'}`}>
                                 {currentTrack?.title || "No Track"}
@@ -210,12 +210,12 @@ const BottomPlayer = () => {
                             </p>
                         </div>
                         {/* Like Button for Bottom Player */}
-                        <div className={`${isExpanded ? 'mt-4' : 'ml-3'}`}>
-                            <LikeButton
-                                trackId={currentTrack?.id || ''}
-                                size={isExpanded ? 'lg' : 'md'}
-                            />
-                        </div>
+                    </div>
+                    <div className={`${isExpanded ? 'hidden' : 'ml-4'}`}>
+                        <LikeButton
+                            trackId={currentTrack?.id || ''}
+                            size={isExpanded ? 'lg' : 'md'}
+                        />
                     </div>
                 </div>
 
@@ -300,7 +300,7 @@ const BottomPlayer = () => {
 
                 {/* Volume Control */}
                 <div className="hidden md:flex items-center space-x-2 md:w-40 justify-end order-3">
-                    {volume === 0 ? <VolumeX className='w-5 h-5' /> : volume < 0.5 ? <Volume1 className='w-5 h-5' /> : <Volume2 className='w-5 h-5' />}
+                    {volume === 0 ? <VolumeX className='w-6 h-6' /> : volume < 0.5 ? <Volume1 className='w-6 h-6' /> : <Volume2 className='w-6 h-6' />}
                     <Slider
                         value={[volume * 100]}
                         max={100}
