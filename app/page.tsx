@@ -21,6 +21,7 @@ const Page = () => {
                         isLoading={all.isLoading}
                         error={all.error}
                         handleTrackSelect={all.handleTrackSelect}
+                        variant="grid"
                     />
                 </div>
                 <div className="flex flex-col gap-4 mb-8">

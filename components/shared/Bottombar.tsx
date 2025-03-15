@@ -28,8 +28,8 @@ export const Bottombar = () => {
         },
         {
             id: 3,
-            title: "Библиотека",
-            url: "/library",
+            title: "Подборки",
+            url: "/collections",
             icon: <LibraryBig />,
         },
         {

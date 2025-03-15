@@ -1,6 +1,6 @@
 const Page = () => {
     return (
-        <>Library</>
+        <>Collections</>
     );
 };
 

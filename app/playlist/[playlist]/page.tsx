@@ -63,14 +63,14 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
 
     // Generate a random gradient for the playlist header
     const generateGradient = () => {
-        if (!playlistData) return 'from-blue-600 to-purple-600';
+        if (!playlistData) return 'from-blue-300 to-purple-300';
 
         const gradients: string[] = [
-            'from-purple-400 to-pink-600', // Purple to Pink
-            'from-rose-400 to-fuchsia-400', // Rose to Fuchsia
-            'from-pink-400 to-purple-400', // Pink to Purple
-            'from-fuchsia-400 to-rose-400', // Fuchsia to Rose
-            'from-indigo-400 to-purple-400',
+            'from-purple-300 to-pink-300', // Purple to Pink
+            'from-rose-300 to-fuchsia-300', // Rose to Fuchsia
+            'from-pink-300 to-purple-300', // Pink to Purple
+            'from-fuchsia-300 to-rose-300', // Fuchsia to Rose
+            'from-indigo-300 to-purple-300',
         ];
 
         // Use a hash of the playlist ID to ensure consistent colors

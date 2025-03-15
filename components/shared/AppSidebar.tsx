@@ -31,8 +31,8 @@ const links = [
     },
     {
         id: 3,
-        title: "Библиотека",
-        url: "/library",
+        title: "Подборки",
+        url: "/collections",
         icon: <LibraryBig />,
     },
     {
@@ -45,17 +45,17 @@ const links = [
 
 export const AppSidebar = () => {
     return (
-        <Sidebar>
+        <Sidebar collapsible="icon">
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu className="mt-2">
+                        <SidebarMenu className="mt-4">
                             {links.map((link) => (
                                 <SidebarMenuItem key={link.id}>
                                     <SidebarMenuButton asChild>
                                         <Link
                                             href={link.url}
-                                            className="flex flex-row items-center px-4 py-7"
+                                            className="flex flex-row items-center px-4"
                                         >
                                             <div className="flex items-center justify-center size-8">{link.icon}</div>
                                             <span className="hidden lg:flex text-[18px]">{link.title}</span>
@@ -68,5 +68,5 @@ export const AppSidebar = () => {
                 </SidebarGroup>
             </SidebarContent>
         </Sidebar>
-    )
-}
+    );
+};

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { usePlaylist } from '@/hooks/usePlaylist';
-import { PlaylistPreview } from '@/components/shared/PlaylistPreview';
-import { Playlist } from '@/db/models/user.model';
+
 import { PlusCircle } from 'lucide-react';
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PlaylistPreview } from '@/components/shared/PlaylistPreview';
 import {
     Dialog,
     DialogContent,
@@ -14,7 +15,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 
 export const PlaylistGrid = () => {
     const { playlists, isLoading, createNewPlaylist, refreshPlaylists } = usePlaylist();
@@ -40,7 +40,7 @@ export const PlaylistGrid = () => {
     };
 
     if (isLoading) {
-        return <div className="text-center py-8">Loading playlists...</div>;
+        return <div className="text-center py-8">Загрузка плейлистов...</div>;
     }
 
     return (
@@ -49,7 +49,7 @@ export const PlaylistGrid = () => {
                 <h2 className="text-xl font-semibold">Ваши плейлисты</h2>
                 <Button
                     onClick={() => setIsCreateDialogOpen(true)}
-                    className="flex items-center gap-2 bg-purple-200/50 text-purple-800 hover:bg-purple-300/50"
+                    className="flex items-center gap-2 bg-purple-200/50 text-purple-800 hover:bg-purple-300"
                 >
                     <PlusCircle className="h-4 w-4" />
                     <span>Новый плейлист</span>
@@ -61,7 +61,7 @@ export const PlaylistGrid = () => {
                     <p className="text-neutral-500 mb-4">У вас пока нет плейлистов.</p>
                     <Button
                         onClick={() => setIsCreateDialogOpen(true)}
-                        className="bg-purple-200/50 text-purple-800 hover:bg-purple-300/50"
+                        className="bg-purple-200/50 text-purple-800 hover:bg-purple-300"
                     >
                         Создайте свой первый плейлист
                     </Button>
@@ -97,7 +97,7 @@ export const PlaylistGrid = () => {
                             <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                                 Отмена
                             </Button>
-                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800">
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800 hover:bg-purple-300">
                                 Создать
                             </Button>
                         </DialogFooter>

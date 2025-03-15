@@ -23,13 +23,24 @@ async function fileHash(filePath: string): Promise<string> {
 const coverCache: { [key: string]: string } = {};
 
 async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
+  // Check if we're in a production environment
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // For production environments, use data URLs
+  if (isProduction) {
+    const base64Image = imageBuffer.toString('base64');
+    return `data:image/jpeg;base64,${base64Image}`;
+  }
+  
+  // For development, continue using file system
   if (!coverCache[hash]) {
-    await fs.writeFile(path.join(process.cwd(), 'public', 'covers', coverFilename), imageBuffer);
+    const coverPath = path.join(process.cwd(), 'public', 'covers');
+    await fs.mkdir(coverPath, { recursive: true });
+    await fs.writeFile(path.join(coverPath, coverFilename), imageBuffer);
     coverCache[hash] = `/covers/${coverFilename}`;
   }
   return coverCache[hash];
 }
-
 async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
   const tracksDirectory = path.join(process.cwd(), 'public', 'tracks');
 
@@ -46,10 +57,10 @@ async function getTracks(requestedTracks?: string[]): Promise<Track[]> {
       if (['.mp3', '.wav', '.flac', '.m4a'].includes(path.extname(filename).toLowerCase())) {
         const filePath = path.join(tracksDirectory, filename);
         const stats = await fs.stat(filePath);
-        
+
         // Generate consistent ID based on filename and filesize
         const fileId = generateConsistentId(filename, stats.size);
-        
+
         const fileType = path.extname(filename).toLowerCase().substring(1);
         let title = filename.replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
         let author: string | undefined;

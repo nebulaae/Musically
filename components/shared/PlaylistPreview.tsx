@@ -84,8 +84,8 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                         <h3 className="font-bold text-lg truncate">{playlist.name}</h3>
                         <p className="text-sm opacity-80">
                             {trackCount !== undefined
-                                ? `${trackCount} ${trackCount === 1 ? 'track' : 'tracks'}`
-                                : `${playlist.tracks.length} ${playlist.tracks.length === 1 ? 'track' : 'tracks'}`}
+                                ? `${trackCount} ${trackCount === 1 ? 'Песня' : 'Песен'}`
+                                : `${playlist.tracks.length} ${playlist.tracks.length === 1 ? 'Песни' : 'Песен'}`}
                         </p>
                     </div>
                 </div>
@@ -137,7 +137,7 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                             <Button type="button" variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
                                 Отмена
                             </Button>
-                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800">
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800 hover:bg-purple-300">
                                 Сохранить
                             </Button>
                         </DialogFooter>
