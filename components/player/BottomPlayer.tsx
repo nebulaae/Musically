@@ -73,17 +73,13 @@ const BottomPlayer = () => {
         }
     }, [tracks]);
 
-    // Handle drag end
-    const handleDragEnd = useCallback(() => {
-        setIsDragging(false);
-        if (y.get() > 100) {
-            // If dragged down more than 100px, close the player
-            setIsPlayerVisible(false);
-        } else {
-            // Reset position
-            y.set(0);
+    // Make sure to add this useEffect right after your other state effects
+    useEffect(() => {
+        if (currentTrackIndex !== undefined && currentTrackIndex >= 0) {
+            setIsPlayerVisible(true);
         }
-    }, [y]);
+    }, [currentTrackIndex]);
+
 
     // Toggle play/pause with button disable safety
     const handlePlayPauseToggle = useCallback(async (e: React.MouseEvent) => {
@@ -110,6 +106,8 @@ const BottomPlayer = () => {
 
     // Handle seeking in the song
     const handleSeek = useCallback((value: number[]) => {
+        // Stop propagation of any drag events
+        setIsDragging(false);
         const newTime = (value[0] / 100) * duration;
         seekTo(newTime);
     }, [duration, seekTo]);
@@ -201,9 +199,19 @@ const BottomPlayer = () => {
                 }}
                 drag={!isExpanded ? "y" : false}
                 dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragStart={() => setIsDragging(true)}
-                onDragEnd={handleDragEnd}
+                onDragEnd={() => {
+                    setIsDragging(false);
+                    const currentY = y.get();
+                    if (currentY > 50) {
+                        // Stop music when player is closed
+                        if (isPlaying) {
+                            togglePlayPause();
+                        }
+                        setIsPlayerVisible(false);
+                    } else {
+                        y.set(0);
+                    }
+                }}
             >
                 {/* Drag handle indicator */}
                 {!isExpanded && (
@@ -271,7 +279,6 @@ const BottomPlayer = () => {
                             </motion.button>
                         </div>
                     </div>
-
                     {/* Player Controls - Middle */}
                     <div className={`flex items-center w-full space-x-6 order-2 flex-col ${isExpanded ? 'mb-12' : 'md:flex-row hidden sm:flex'} md:flex-1 justify-center`}>
                         <div className="flex flex-col items-center justify-center gap-2 w-full">

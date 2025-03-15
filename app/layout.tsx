@@ -3,10 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import BottomPlayer from "@/components/player/BottomPlayer";
 
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { Bottombar } from "@/components/shared/Bottombar";
-import { AppSidebar } from "@/components/shared/AppSidebar";
+import { AppSidebar, Trigger } from "@/components/shared/AppSidebar";
 import { AudioProvider } from "@/components/player/AudioContext";
 
 import "./globals.css";
@@ -41,7 +41,7 @@ export default async function RootLayout({
           <AudioProvider>
             <AuthGuard>
               <AppSidebar />
-              <SidebarTrigger />
+              <Trigger />
               {children}
               <BottomPlayer />
               <Bottombar />
