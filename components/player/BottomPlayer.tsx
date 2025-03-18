@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 
-import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
 import { LikeButton } from '@/components/shared/LikeButton';
@@ -18,16 +17,21 @@ import {
     Loader2,
     Repeat,
     Shuffle,
-    ChevronDown
 } from 'lucide-react';
 
+import { useAudio } from './AudioContext';
 import {
     useState,
     useCallback,
     memo,
     useEffect
 } from 'react';
-import { useAudio } from './AudioContext';
+import {
+    motion,
+    useMotionValue,
+    useTransform,
+    AnimatePresence
+} from 'framer-motion';
 
 
 const BottomPlayer = () => {
@@ -187,7 +191,7 @@ const BottomPlayer = () => {
     return (
         <AnimatePresence>
             <motion.footer
-                className={`fixed ${isExpanded ? 'inset-0 bg-white' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'} bg-sidebar glassmorphism border-t-[1px] border-neutral-200 p-4 z-100`}
+                className={`fixed ${isExpanded ? 'inset-0 bg-white pb-32' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'} bg-sidebar glassmorphism border-t-[1px] border-neutral-200 p-4 z-100`}
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0 }}
                 exit={{ y: 300, opacity: 0 }}
@@ -215,8 +219,8 @@ const BottomPlayer = () => {
             >
                 {/* Drag handle indicator */}
                 {!isExpanded && (
-                    <div className="w-full flex justify-center mb-2">
-                        <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+                    <div className="w-full flex justify-center items-center mb-2">
+                        <div className="w-12 h-1 bg-gray-300 rounded-full" />
                     </div>
                 )}
 

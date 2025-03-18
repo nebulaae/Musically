@@ -31,9 +31,7 @@ export const PlaylistActions = ({ trackId }: PlaylistProps) => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleCreatePlaylist = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
 
     const newPlaylist = await createNewPlaylist(newPlaylistName);

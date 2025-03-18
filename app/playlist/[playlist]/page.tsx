@@ -63,22 +63,29 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
 
     // Generate a random gradient for the playlist header
     const generateGradient = () => {
-        if (!playlistData) return 'from-blue-300 to-purple-300';
-
         const gradients: string[] = [
-            'from-purple-300 to-pink-300', // Purple to Pink
-            'from-rose-300 to-fuchsia-300', // Rose to Fuchsia
-            'from-pink-300 to-purple-300', // Pink to Purple
-            'from-fuchsia-300 to-rose-300', // Fuchsia to Rose
-            'from-indigo-300 to-purple-300',
+            'bg-gradient-to-br from-violet-600 to-indigo-600',
+            'bg-gradient-to-r from-pink-500 to-rose-500',
+            'bg-gradient-to-tr from-violet-200 to-pink-200',
+            'bg-gradient-to-r from-fuchsia-600 to-purple-600',
+            'bg-gradient-to-tl from-purple-500 to-purple-900',
+            'bg-gradient-to-r from-emerald-500 to-emerald-900',
+            'bg-gradient-to-bl from-emerald-400 to-cyan-400',
+            'bg-gradient-to-r from-indigo-400 to-cyan-400',
+            'bg-gradient-to-br from-blue-200 to-cyan-200',
+            'bg-gradient-to-r from-amber-200 to-yellow-500',
+            'bg-gradient-to-b from-amber-500 to-pink-500',
+            'bg-gradient-to-r from-teal-200 to-teal-500',
+            'bg-gradient-to-t from-blue-200 to-cyan-200',
+            'bg-gradient-to-l from-amber-200 to-yellow-400',
+            'bg-gradient-to-r from-teal-400 to-yellow-200',
+            'bg-gradient-to-tl from-purple-500 to-purple-900',
+            'bg-gradient-to-tr from-slate-300 to-slate-500',
+            'bg-gradient-to-b from-slate-900 to-slate-700',
+            'bg-gradient-to-r from-slate-500 to-slate-800'
         ];
 
-        // Use a hash of the playlist ID to ensure consistent colors
-        const index = playlistData.playlist.id
-            .split('')
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
-
-        return gradients[index];
+        return gradients[Math.floor(Math.random() * gradients.length)];
     };
 
     // Check if the playlist is currently playing
@@ -123,7 +130,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     return (
         <div className="flex flex-col w-full min-h-screen">
             {/* Playlist Header */}
-            <div className={`bg-gradient-to-b ${generateGradient()} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
+            <div className={`${generateGradient()} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
                 <div className="w-40 h-40 md:w-48 md:h-48 bg-neutral-800 shadow-lg rounded-lg overflow-hidden flex-shrink-0">
                     {tracks.length > 0 ? (
                         <Image

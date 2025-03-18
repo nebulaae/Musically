@@ -54,12 +54,12 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
 
     const handleDeletePlaylist = async () => {
         await removePlaylist(playlist.id);
+        
         setIsDeleteDialogOpen(false);
+        refreshPlaylists();
     };
 
-    const handleRenamePlaylist = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const handleRenamePlaylist = async () => {
         await renamePlaylist(playlist.id, newPlaylistName);
 
         setIsRenameDialogOpen(false);

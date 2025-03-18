@@ -29,7 +29,7 @@ const SearchPage = () => {
     };
 
     return (
-        <section className="flex flex-col items-center w-full px-4 pb-32">
+        <section className="flex flex-col items-center w-full px-4 pb-36">
             <h1 className="mt-18 text-3xl sm:text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent mb-6">
                 Ищите песни
             </h1>

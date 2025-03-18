@@ -50,11 +50,11 @@ const Page = () => {
     };
 
     return (
-        <section className="flex flex-col w-full">
+        <section className="flex flex-col items-center w-full pb-32">
             <div className="container">
                 <div className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-row items-center justify-between">
-                        <h1 className="title-text">Здраствуйте, {user?.name}!</h1>
+                        <h1 className="title-text">Здраствуйте!</h1>
                     </div>
                     {/* TABS */}
                     <Tabs defaultValue="favorite">

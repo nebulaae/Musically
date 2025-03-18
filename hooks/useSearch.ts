@@ -10,6 +10,8 @@ export const useSearch = () => {
     const [allTracks, setAllTracks] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const tracksPerPage = 10;
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -64,6 +66,11 @@ export const useSearch = () => {
         setSearchResults(filtered);
     }, [debouncedSearchQuery, allTracks]);
 
+    // Reset to first page when search query changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearchQuery]);
+
     // Handle search input change
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
@@ -74,9 +81,22 @@ export const useSearch = () => {
         playTrackAtIndex(index, searchResults);
     }, [playTrackAtIndex, searchResults]);
 
+    const totalPages = useMemo(() => Math.ceil(searchResults.length / tracksPerPage), [searchResults.length]);
+
+    // Get current tracks for the current page
+    const currentPageTracks = useMemo(() => {
+        const startIndex = (currentPage - 1) * tracksPerPage;
+        return searchResults.slice(startIndex, startIndex + tracksPerPage);
+    }, [searchResults, currentPage]);
+
+    // Update the return statement to include these new values
     return {
         searchQuery,
         searchResults,
+        currentPageTracks,
+        currentPage,
+        setCurrentPage,
+        totalPages,
         isLoading,
         error,
         handleSearchChange,

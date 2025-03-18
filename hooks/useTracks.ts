@@ -17,7 +17,7 @@ interface TracksCache {
 
 // Move cache outside of the component to persist between renders
 const tracksCache: TracksCache = {};
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRY = 60 * 60 * 1000; // 1 hours
 
 // Add localStorage persistence for the cache
 const initializeCache = () => {
@@ -111,7 +111,7 @@ export const useTracks = (...trackNames: string[]) => {
           signal: abortControllerRef.current?.signal,
           // Add cache control headers
           headers: {
-            'Cache-Control': 'max-age=300', // 5 minutes
+            'Cache-Control': 'max-age=6000', // 1 hour
           },
         });
 

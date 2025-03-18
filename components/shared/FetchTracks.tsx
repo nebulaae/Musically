@@ -1,12 +1,29 @@
 "use client"
 
 import Image from 'next/image';
-import { memo, useMemo, useCallback, useRef, useEffect } from 'react';
+
 import { Play, Pause } from 'lucide-react';
 import { SoundWave } from '../ui/magic/SoundWave';
+import { LikeButton } from '@/components/shared/LikeButton';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from "@/components/ui/pagination";
+
 import { PlaylistActions } from './PlaylistActions';
 import { useAudio } from '@/components/player/AudioContext';
-import { LikeButton } from '@/components/shared/LikeButton';
+import {
+  memo,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+  useState
+} from 'react';
 
 interface TrackItemProps {
   track: Track;
@@ -40,10 +57,10 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
           priority={index < 4}
         />
         <div className="absolute flex items-end justify-end inset-0 p-4 z-10">
-          <LikeButton 
-            trackId={track.id} 
-            size="md" 
-            className="ml-2 bg-white/50 glassmorphism p-2 rounded-full shadow-lg" 
+          <LikeButton
+            trackId={track.id}
+            size="md"
+            className="ml-2 bg-white/50 glassmorphism p-2 rounded-full shadow-lg"
           />
         </div>
 
@@ -144,10 +161,27 @@ export const FetchTracks = memo(({
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
   const prevTracksRef = useRef<Track[]>([]);
-  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const tracksPerPage = 10;
+
   // Memoize track IDs to help with cache invalidation
   const trackIds = useMemo(() => tracks.map(track => track.id).join(','), [tracks]);
-  
+
+  // Calculate pagination values
+  const totalPages = useMemo(() => Math.ceil(tracks.length / tracksPerPage), [tracks.length]);
+
+  // Get current tracks to display (renamed to paginatedTracks to avoid conflict)
+  const paginatedTracks = useMemo(() => {
+    const startIndex = (currentPage - 1) * tracksPerPage;
+    return tracks.slice(startIndex, startIndex + tracksPerPage);
+  }, [tracks, currentPage]);
+
+  // Reset to first page when tracks change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [trackIds]);
+
   // Check if a track is the currently playing track (memoized)
   const getTrackPlayingState = useCallback((track: Track) => {
     if (!isPlaying) return false;
@@ -182,38 +216,81 @@ export const FetchTracks = memo(({
     return <div className="text-start py-4">Песни не найдены.</div>;
   }
 
+  // Render pagination component
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              className={currentPage === 1 ? "pointer-events-none opacity-50 text-purple-800" : "cursor-pointer bg-purple-200/50 text-purple-800"}
+            />
+          </PaginationItem>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <PaginationItem key={page}>
+              <PaginationLink
+                onClick={() => setCurrentPage(page)}
+                isActive={currentPage === page}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50 text-purple-800" : "cursor-pointer bg-purple-200/50 text-purple-800"}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
+
   // Render tracks in block layout (grid or flex of cards)
   if (layout === 'blocks') {
     return (
-      <div className={variant === 'grid'
-        ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
-      }>
-        {tracks.map((track, index) => (
-          <TrackItem
-            key={track.id}
-            track={track}
-            index={index}
-            isPlaying={getTrackPlayingState(track)}
-            handleTrackSelect={handleTrackSelect}
-          />
-        ))}
+      <div className="flex flex-col w-full">
+        <div className={variant === 'grid'
+          ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
+        }>
+          {paginatedTracks.map((track, index) => (
+            <TrackItem
+              key={track.id}
+              track={track}
+              index={(currentPage - 1) * tracksPerPage + index}
+              isPlaying={getTrackPlayingState(track)}
+              handleTrackSelect={handleTrackSelect}
+            />
+          ))}
+        </div>
+        {renderPagination()}
       </div>
     );
   }
 
   // Render tracks in list layout (Spotify-like list)
   return (
-    <div className="bg-sidebar glassmorphism w-full border border-neutral-200 rounded-xl divide-y">
-      {tracks.map((track, index) => (
-        <ListTrackItem
-          key={track.id}
-          track={track}
-          index={index}
-          isPlaying={getTrackPlayingState(track)}
-          handleTrackSelect={handleTrackSelect}
-        />
-      ))}
+    <div className="flex flex-col w-full">
+      <div className="bg-sidebar glassmorphism w-full border border-neutral-200 rounded-xl divide-y">
+        {paginatedTracks.map((track, index) => (
+          <ListTrackItem
+            key={track.id}
+            track={track}
+            index={(currentPage - 1) * tracksPerPage + index}
+            isPlaying={getTrackPlayingState(track)}
+            handleTrackSelect={handleTrackSelect}
+          />
+        ))}
+      </div>
+      {renderPagination()}
     </div>
   );
 });
