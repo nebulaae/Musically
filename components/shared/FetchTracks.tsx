@@ -39,6 +39,7 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
+  // Rest of TrackItem component stays the same
   return (
     <div
       className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
@@ -98,6 +99,7 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
+  // Rest of the ListTrackItem remains the same
   return (
     <div
       className={`flex items-center p-3 hover:bg-neutral-100 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 rounded-xl' : ''}`}
@@ -139,6 +141,9 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
 
 ListTrackItem.displayName = 'ListTrackItem';
 
+// Create a global cache for track states
+const trackStateCache = new Map<string, { isPlaying: boolean }>();
+
 interface FetchTracksProps {
   tracks: Track[];
   isLoading: boolean;
@@ -146,10 +151,10 @@ interface FetchTracksProps {
   handleTrackSelect: (index: number) => void;
   layout?: 'blocks' | 'list';
   variant?: 'flex' | 'grid';
-}
-
-// Create a global cache for track states
-const trackStateCache = new Map<string, { isPlaying: boolean }>();
+  totalPages?: number;
+  currentPage?: number;
+  goToPage?: (page: number) => void;
+};
 
 export const FetchTracks = memo(({
   tracks,
@@ -157,30 +162,33 @@ export const FetchTracks = memo(({
   error,
   handleTrackSelect,
   layout = 'blocks',
-  variant = 'flex'
+  variant = 'flex',
+  totalPages = 1,
+  currentPage = 1,
+  goToPage = () => { }
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
-  const prevTracksRef = useRef<Track[]>([]);
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const tracksPerPage = 10;
-
-  // Memoize track IDs to help with cache invalidation
-  const trackIds = useMemo(() => tracks.map(track => track.id).join(','), [tracks]);
-
-  // Calculate pagination values
-  const totalPages = useMemo(() => Math.ceil(tracks.length / tracksPerPage), [tracks.length]);
-
-  // Get current tracks to display (renamed to paginatedTracks to avoid conflict)
-  const paginatedTracks = useMemo(() => {
-    const startIndex = (currentPage - 1) * tracksPerPage;
-    return tracks.slice(startIndex, startIndex + tracksPerPage);
-  }, [tracks, currentPage]);
-
-  // Reset to first page when tracks change
+  
+  // Keep track of all tracks across all pages
+  const tracksRef = useRef<Track[]>([]);
+  const limit = tracks.length || 10;
+  
+  // Update our ref when tracks change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [trackIds]);
+    // We need to ensure we maintain the same tracks array structure
+    // Update only the section for the current page
+    const startIndex = (currentPage - 1) * limit;
+    
+    // Initialize the array if needed
+    if (!tracksRef.current || tracksRef.current.length === 0) {
+      tracksRef.current = new Array(limit * totalPages).fill(null);
+    }
+    
+    // Update the section of the array for the current page
+    for (let i = 0; i < tracks.length; i++) {
+      tracksRef.current[startIndex + i] = tracks[i];
+    }
+  }, [tracks, currentPage, limit, totalPages]);
 
   // Check if a track is the currently playing track (memoized)
   const getTrackPlayingState = useCallback((track: Track) => {
@@ -189,17 +197,46 @@ export const FetchTracks = memo(({
     return currentTrack && currentTrack.id === track.id;
   }, [isPlaying, currentTrackIndex, currentTracks]);
 
-  // Update cache when tracks or playing state changes
+  // Add this useEffect to update the trackStateCache when tracks or playing state changes
   useEffect(() => {
-    if (trackIds && tracks.length > 0) {
-      tracks.forEach(track => {
-        trackStateCache.set(track.id, {
-          isPlaying: getTrackPlayingState(track)
-        });
+    // Update cache when tracks change or playing state changes
+    tracks.forEach(track => {
+      const isTrackPlaying = getTrackPlayingState(track);
+      trackStateCache.set(track.id, {
+        isPlaying: isTrackPlaying
       });
+    });
+  }, [tracks, getTrackPlayingState]);
+
+  // Optional: Add this to use the cache for performance optimization
+  const isTrackPlaying = useCallback((track: Track) => {
+    // Check cache first
+    const cachedState = trackStateCache.get(track.id);
+    if (cachedState !== undefined) {
+      return cachedState.isPlaying;
     }
-    prevTracksRef.current = tracks;
-  }, [tracks, trackIds, getTrackPlayingState]);
+    // Fall back to computing the value
+    const isPlaying = getTrackPlayingState(track);
+    // Update cache
+    trackStateCache.set(track.id, { isPlaying });
+    return isPlaying;
+  }, [getTrackPlayingState]);
+
+  // Create a function that calculates the absolute index for a track
+  const calculateAbsoluteIndex = useCallback((localIndex: number) => {
+    return (currentPage - 1) * limit + localIndex;
+  }, [currentPage, limit]);
+
+  // Create modified handleTrackSelect that uses our ref to get all tracks
+  const handleTrackSelectWithPagination = useCallback((localIndex: number) => {
+    // Calculate absolute index
+    const absoluteIndex = calculateAbsoluteIndex(localIndex);
+    
+    console.log(localIndex)
+
+    // Call original handler with the filtered tracks array and absolute index
+    handleTrackSelect(absoluteIndex);
+  }, [calculateAbsoluteIndex, handleTrackSelect]);
 
   // For loading state
   if (isLoading) {
@@ -225,7 +262,7 @@ export const FetchTracks = memo(({
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => goToPage(Math.max(1, currentPage - 1))}
               className={currentPage === 1 ? "pointer-events-none opacity-50 text-purple-800" : "cursor-pointer bg-purple-200/50 text-purple-800"}
             />
           </PaginationItem>
@@ -233,7 +270,7 @@ export const FetchTracks = memo(({
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
             <PaginationItem key={page}>
               <PaginationLink
-                onClick={() => setCurrentPage(page)}
+                onClick={() => goToPage(page)}
                 isActive={currentPage === page}
                 className="cursor-pointer"
               >
@@ -244,7 +281,7 @@ export const FetchTracks = memo(({
 
           <PaginationItem>
             <PaginationNext
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
               className={currentPage === totalPages ? "pointer-events-none opacity-50 text-purple-800" : "cursor-pointer bg-purple-200/50 text-purple-800"}
             />
           </PaginationItem>
@@ -261,13 +298,13 @@ export const FetchTracks = memo(({
           ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
         }>
-          {paginatedTracks.map((track, index) => (
+          {tracks.map((track, index) => (
             <TrackItem
               key={track.id}
               track={track}
-              index={(currentPage - 1) * tracksPerPage + index}
-              isPlaying={getTrackPlayingState(track)}
-              handleTrackSelect={handleTrackSelect}
+              index={calculateAbsoluteIndex(index)}
+              isPlaying={isTrackPlaying(track)}
+              handleTrackSelect={handleTrackSelectWithPagination}
             />
           ))}
         </div>
@@ -276,17 +313,17 @@ export const FetchTracks = memo(({
     );
   }
 
-  // Render tracks in list layout (Spotify-like list)
+  // Render list layout
   return (
     <div className="flex flex-col w-full">
       <div className="bg-sidebar glassmorphism w-full border border-neutral-200 rounded-xl divide-y">
-        {paginatedTracks.map((track, index) => (
+        {tracks.map((track, index) => (
           <ListTrackItem
             key={track.id}
             track={track}
-            index={(currentPage - 1) * tracksPerPage + index}
-            isPlaying={getTrackPlayingState(track)}
-            handleTrackSelect={handleTrackSelect}
+            index={calculateAbsoluteIndex(index)}
+            isPlaying={isTrackPlaying(track)}
+            handleTrackSelect={handleTrackSelectWithPagination}
           />
         ))}
       </div>

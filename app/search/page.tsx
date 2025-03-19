@@ -9,7 +9,10 @@ import { FetchTracks } from "@/components/shared/FetchTracks";
 const SearchPage = () => {
     const {
         searchQuery,
-        searchResults,
+        currentPageTracks,
+        currentPage,
+        setCurrentPage,
+        totalPages,
         isLoading,
         error,
         handleSearchChange,
@@ -26,6 +29,11 @@ const SearchPage = () => {
             const event = new Event('input', { bubbles: true });
             inputElement.dispatchEvent(event);
         }
+    };
+
+    // Handle page change function to pass to FetchTracks
+    const goToPage = (page: number) => {
+        setCurrentPage(page);
     };
 
     return (
@@ -63,22 +71,28 @@ const SearchPage = () => {
                     <div className="mb-6">
                         <h2 className="title-text mb-8">Результаты поиска</h2>
                         <FetchTracks
-                            tracks={searchResults}
+                            tracks={currentPageTracks}
                             isLoading={isLoading}
                             error={error}
                             handleTrackSelect={handleTrackSelect}
                             layout="list"
+                            totalPages={totalPages}
+                            currentPage={currentPage}
+                            goToPage={goToPage}
                         />
                     </div>
                 ) : (
                     <div className="mb-6">
                         <h2 className="title-text mb-8">Все песни</h2>
                         <FetchTracks
-                            tracks={searchResults}
+                            tracks={currentPageTracks}
                             isLoading={isLoading}
                             error={error}
                             handleTrackSelect={handleTrackSelect}
                             layout="list"
+                            totalPages={totalPages}
+                            currentPage={currentPage}
+                            goToPage={goToPage}
                         />
                     </div>
                 )}

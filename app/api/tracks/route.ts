@@ -25,13 +25,13 @@ const coverCache: { [key: string]: string } = {};
 async function getCoverFromCache(hash: string, coverFilename: string, imageBuffer: Buffer): Promise<string> {
   // Check if we're in a production environment
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
   // For production environments, use data URLs
   if (isProduction) {
     const base64Image = imageBuffer.toString('base64');
     return `data:image/jpeg;base64,${base64Image}`;
   }
-  
+
   // For development, continue using file system
   if (!coverCache[hash]) {
     const coverPath = path.join(process.cwd(), 'public', 'covers');
@@ -131,6 +131,23 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const requestedTracks = searchParams.getAll('tracks');
 
-  const tracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
-  return NextResponse.json(tracks);
+  // Add pagination parameters
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const limit = parseInt(searchParams.get('limit') || '10', 10);
+
+  const allTracks = await getTracks(requestedTracks.length > 0 ? requestedTracks : undefined);
+
+  // Calculate pagination
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  const paginatedTracks = allTracks.slice(startIndex, endIndex);
+
+  // Return paginated data with metadata
+  return NextResponse.json({
+    tracks: paginatedTracks,
+    total: allTracks.length,
+    page,
+    limit,
+    totalPages: Math.ceil(allTracks.length / limit)
+  });
 }

@@ -1,34 +1,31 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useAudio } from "@/components/player/AudioContext";
 import { Track } from "@/db/models/tracks.model";
+import { useAudio } from "@/components/player/AudioContext";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-// Create a global cache for track data with better typing
 interface CacheEntry {
   data: Track[];
   timestamp: number;
   expiryTime: number;
+  total?: number;
+  totalPages?: number;
 }
 
 interface TracksCache {
-  [key: string]: CacheEntry
+  [key: string]: CacheEntry;
 }
 
-// Move cache outside of the component to persist between renders
 const tracksCache: TracksCache = {};
-const CACHE_EXPIRY = 60 * 60 * 1000; // 1 hours
+const CACHE_EXPIRY = 60 * 60 * 1000;
 
-// Add localStorage persistence for the cache
 const initializeCache = () => {
   try {
-    const savedCache = localStorage.getItem('tracksCache');
+    const savedCache = localStorage.getItem("tracksCache");
     if (savedCache) {
       const parsedCache = JSON.parse(savedCache);
-
-      // Validate cache entries and remove expired ones
       const now = Date.now();
-      Object.keys(parsedCache).forEach(key => {
+      Object.keys(parsedCache).forEach((key) => {
         const entry = parsedCache[key];
         if (entry && entry.timestamp && now - entry.timestamp < entry.expiryTime) {
           tracksCache[key] = entry;
@@ -36,62 +33,66 @@ const initializeCache = () => {
       });
     }
   } catch (error) {
-    console.error('Error loading cache from localStorage:', error);
+    console.error("Error loading cache from localStorage:", error);
   }
 };
 
-// Initialize cache on module load
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   initializeCache();
 }
 
-// Save cache to localStorage
 const saveCache = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     try {
-      localStorage.setItem('tracksCache', JSON.stringify(tracksCache));
+      localStorage.setItem("tracksCache", JSON.stringify(tracksCache));
     } catch (error) {
-      console.error('Error saving cache to localStorage:', error);
+      console.error("Error saving cache to localStorage:", error);
     }
   }
 };
 
-export const useTracks = (...trackNames: string[]) => {
+export const useTracks = (options?: { trackNames?: string[]; page?: number; limit?: number }) => {
+  const { trackNames = [], page = 1, limit = 10 } = options || {};
+
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalTracks, setTotalTracks] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(page);
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const loadedPagesRef = useRef<Set<number>>(new Set());
 
-  const {
-    playTrackAtIndex,
-    isPlaying,
-    togglePlayPause,
-    currentTime,
-    duration
-  } = useAudio();
+  const { playTrackAtIndex, isPlaying, togglePlayPause, currentTime, duration } = useAudio();
 
-  // Create a stable cache key from trackNames
-  const cacheKey = useMemo(() =>
-    trackNames.length > 0 ? trackNames.sort().join(',') : 'all-tracks',
-    [trackNames]
-  );
+  const cacheKey = useMemo(() => {
+    const baseKey = trackNames.length > 0 ? trackNames.sort().join(",") : "all-tracks";
+    return `${baseKey}-page${currentPage}-limit${limit}`;
+  }, [trackNames, currentPage, limit]);
+
+  const goToPage = useCallback((newPage: number) => {
+    if (newPage !== currentPage) setCurrentPage(newPage);
+  }, [currentPage]);
 
   useEffect(() => {
-    // Set up AbortController for fetch
     abortControllerRef.current = new AbortController();
-
     isMountedRef.current = true;
 
     const fetchTracks = async () => {
       try {
-        // Check cache first
+        abortControllerRef.current = new AbortController();
+        isMountedRef.current = true;
+
         const cachedData = tracksCache[cacheKey];
         const now = Date.now();
 
-        if (cachedData && (now - cachedData.timestamp) < cachedData.expiryTime) {
+        if (cachedData && now - cachedData.timestamp < cachedData.expiryTime) {
           if (isMountedRef.current) {
             setTracks(cachedData.data);
+            setTotalTracks(cachedData.total ?? cachedData.data.length);
+            setTotalPages(cachedData.totalPages || 1);
             setIsLoading(false);
           }
           return;
@@ -99,20 +100,15 @@ export const useTracks = (...trackNames: string[]) => {
 
         if (isMountedRef.current) setIsLoading(true);
 
-        let url = '/api/tracks';
-        // If track names are provided, add them as query parameters
-        if (trackNames.length > 0) {
-          const queryParams = new URLSearchParams();
-          trackNames.forEach(name => queryParams.append('tracks', name));
-          url = `${url}?${queryParams.toString()}`;
-        }
+        const queryParams = new URLSearchParams();
+        queryParams.append("page", currentPage.toString());
+        queryParams.append("limit", limit.toString());
+        trackNames.forEach((name) => queryParams.append("tracks", name));
 
+        const url = `/api/tracks?${queryParams.toString()}`;
         const response = await fetch(url, {
           signal: abortControllerRef.current?.signal,
-          // Add cache control headers
-          headers: {
-            'Cache-Control': 'max-age=6000', // 1 hour
-          },
+          headers: { "Cache-Control": "max-age=6000" },
         });
 
         if (!response.ok) {
@@ -121,40 +117,46 @@ export const useTracks = (...trackNames: string[]) => {
 
         const data = await response.json();
 
-        if (Array.isArray(data) && data.length > 0) {
-          // Update cache
+        if (data?.tracks && Array.isArray(data.tracks)) {
           tracksCache[cacheKey] = {
-            data,
+            data: data.tracks,
             timestamp: now,
-            expiryTime: CACHE_EXPIRY
+            expiryTime: CACHE_EXPIRY,
+            total: data.total,
+            totalPages: data.totalPages,
           };
 
-          // Save cache to localStorage
           saveCache();
 
           if (isMountedRef.current) {
-            setTracks(data);
+            setTracks(data.tracks);
+            setTotalTracks(data.total);
+            setTotalPages(data.totalPages);
             setError(null);
+
+            // Update allTracks safely using a functional update
+            setAllTracks((prevAllTracks) => {
+              const newAllTracks = [...prevAllTracks];
+              const startIndex = (currentPage - 1) * limit;
+
+              for (let i = 0; i < data.tracks.length; i++) {
+                newAllTracks[startIndex + i] = data.tracks[i];
+              }
+
+              return newAllTracks.filter((track) => track !== undefined);
+            });
           }
         } else {
           if (isMountedRef.current) {
-            setError('No tracks found. Please add some music files to the tracks directory.');
+            setError("No tracks found or invalid response format.");
           }
         }
       } catch (err) {
-        // Don't log aborted requests as errors
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          return;
-        }
-
-        console.error('Error fetching tracks:', err);
-        if (isMountedRef.current) {
-          setError(err instanceof Error ? err.message : 'Unknown error fetching tracks');
-        }
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error("Error fetching tracks:", err);
+        if (isMountedRef.current) setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
-        if (isMountedRef.current) {
-          setIsLoading(false);
-        }
+        if (isMountedRef.current) setIsLoading(false);
       }
     };
 
@@ -164,31 +166,32 @@ export const useTracks = (...trackNames: string[]) => {
       isMountedRef.current = false;
       abortControllerRef.current?.abort();
     };
-  }, [cacheKey]); // Depend only on the memoized cacheKey
+  }, [cacheKey]);
 
-  // Memoize track selection handler to prevent unnecessary re-renders
-  const handleTrackSelect = useCallback((index: number) => {
-    playTrackAtIndex(index, tracks);
-  }, [playTrackAtIndex, tracks]);
+  const handleTrackSelect = useCallback(
+    (index: number, trackList?: Track[]) => {
+      const tracksToUse = trackList?.length ? trackList : allTracks.length ? allTracks : tracks;
+      playTrackAtIndex(index, tracksToUse);
+    },
+    [playTrackAtIndex, tracks, allTracks]
+  );
 
-  // Return memoized values
-  return useMemo(() => ({
-    tracks,
-    isPlaying,
-    isLoading,
-    error,
-    currentTime,
-    duration,
-    handleTrackSelect,
-    handlePlayPauseToggle: togglePlayPause
-  }), [
-    tracks,
-    isPlaying,
-    isLoading,
-    error,
-    currentTime,
-    duration,
-    handleTrackSelect,
-    togglePlayPause
-  ]);
+  return useMemo(
+    () => ({
+      tracks,
+      allTracks,
+      isPlaying,
+      isLoading,
+      error,
+      currentTime,
+      duration,
+      totalTracks,
+      totalPages,
+      currentPage,
+      goToPage,
+      handleTrackSelect,
+      handlePlayPauseToggle: togglePlayPause,
+    }),
+    [tracks, allTracks, isPlaying, isLoading, error, currentTime, duration, totalTracks, totalPages, currentPage, goToPage, handleTrackSelect, togglePlayPause]
+  );
 };

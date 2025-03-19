@@ -4,9 +4,23 @@ import { useTracks } from "@/hooks/useTracks";
 import { FetchTracks } from "@/components/shared/FetchTracks";
 
 const Page = () => {
-    const collection = useTracks("Fell In Love.mp3", "VOGUE - Lil Tecca.mp3");
-    const cartiCollection = useTracks("Magnolia.mp3", "Racks Up.mp3");
-    const all = useTracks();
+    const collection = useTracks(({
+        trackNames: ["YVES - Lil Tecca.m4a", "1_1 - HVN ON EARTH - Lil Tecca  Kodak Black (128).mp3"], // render selected tracks
+        page: 1, // default page
+        limit: 10 // fetch limit for next page
+    }));
+
+    const cartiCollection = useTracks(({
+        trackNames: ["Magnolia.mp3", "Cancun.mp3"],
+        page: 1,
+        limit: 10
+    }));
+
+    const all = useTracks(({
+        trackNames: [], // if no names, it will render all tracks
+        page: 1,
+        limit: 10
+    }));
 
     return (
         <section className="flex flex-col items-center w-full pb-32">
@@ -21,7 +35,11 @@ const Page = () => {
                         isLoading={all.isLoading}
                         error={all.error}
                         handleTrackSelect={all.handleTrackSelect}
+                        layout="blocks"
                         variant="grid"
+                        totalPages={all.totalPages}
+                        currentPage={all.currentPage}
+                        goToPage={all.goToPage}
                     />
                 </div>
                 <div className="flex flex-col gap-4 mb-8">

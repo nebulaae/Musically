@@ -82,7 +82,3 @@ const Page = () => {
 };
 
 export default Page;
-
-function getAllPlaylists() {
-    throw new Error("Function not implemented.");
-}

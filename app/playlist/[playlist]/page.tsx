@@ -1,8 +1,9 @@
 "use client";
 
-import Image from 'next/image';
+import Image from "next/image";
 
-import { use } from 'react';
+import { use } from "react";
+import { ru } from 'date-fns/locale'
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Playlist } from '@/db/models/user.model';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { useAudio } from '@/components/player/AudioContext';
 import { FetchTracks } from '@/components/shared/FetchTracks';
-import { Music, Play, PauseIcon, Calendar } from 'lucide-react';
+import { Music, Play, PauseIcon, Calendar } from "lucide-react";
 
 interface PlaylistPageProps {
     params: Promise<{
@@ -27,39 +28,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const { getPlaylistById } = usePlaylist();
     const [playlistData, setPlaylistData] = useState<{ playlist: Playlist; tracks: Track[] } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { playTrackAtIndex, isPlaying, togglePlayPause, currentTrackIndex, tracks: currentTracks } = useAudio();
-
-    useEffect(() => {
-        const fetchPlaylistData = async () => {
-            try {
-                setIsLoading(true);
-                const data = await getPlaylistById(playlistId);
-                setPlaylistData(data);
-            } catch (error) {
-                console.error('Error fetching playlist:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchPlaylistData();
-    }, [playlistId, getPlaylistById]);
-
-    const handlePlayPauseClick = () => {
-        if (playlistData && playlistData.tracks.length > 0) {
-            // Check if we're already playing this playlist
-            const currentTrack = currentTracks[currentTrackIndex];
-            const isCurrentPlaylist = currentTrack &&
-                playlistData.tracks.some(track => track.id === currentTrack.id);
-
-            if (isCurrentPlaylist) {
-                togglePlayPause();
-            } else {
-                // Start playing from the first track
-                playTrackAtIndex(0, playlistData.tracks);
-            }
-        }
-    };
+    const [gradient, setGradient] = useState<string | null>(null);
 
     // Generate a random gradient for the playlist header
     const generateGradient = () => {
@@ -86,6 +55,42 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
+    };
+    const { playTrackAtIndex, isPlaying, togglePlayPause, currentTrackIndex, tracks: currentTracks } = useAudio();
+
+    useEffect(() => {
+        const fetchPlaylistData = async () => {
+            try {
+                setIsLoading(true);
+                const data = await getPlaylistById(playlistId);
+                if (!gradient) {
+                    setGradient(generateGradient())
+                }
+                setPlaylistData(data);
+            } catch (error) {
+                console.error('Error fetching playlist:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPlaylistData();
+    }, [playlistId, getPlaylistById]);
+
+    const handlePlayPauseClick = () => {
+        if (playlistData && playlistData.tracks.length > 0) {
+            // Check if we're already playing this playlist
+            const currentTrack = currentTracks[currentTrackIndex];
+            const isCurrentPlaylist = currentTrack &&
+                playlistData.tracks.some(track => track.id === currentTrack.id);
+
+            if (isCurrentPlaylist) {
+                togglePlayPause();
+            } else {
+                // Start playing from the first track
+                playTrackAtIndex(0, playlistData.tracks);
+            }
+        }
     };
 
     // Check if the playlist is currently playing
@@ -125,12 +130,15 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const { playlist, tracks } = playlistData;
     const coverImage = tracks.length > 0 && tracks[0].cover ? tracks[0].cover : '/default-cover.jpg';
     const playlistCreatedAt = new Date(playlist.createdAt);
-    const formattedDate = formatDistanceToNow(playlistCreatedAt, { addSuffix: true });
+    const formattedDate = formatDistanceToNow(playlistCreatedAt, {
+        addSuffix: true,
+        locale: ru,
+    });
 
     return (
         <div className="flex flex-col w-full min-h-screen">
             {/* Playlist Header */}
-            <div className={`${generateGradient()} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
+            <div className={`${gradient} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
                 <div className="w-40 h-40 md:w-48 md:h-48 bg-neutral-800 shadow-lg rounded-lg overflow-hidden flex-shrink-0">
                     {tracks.length > 0 ? (
                         <Image
@@ -151,7 +159,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                     <p className="text-sm uppercase tracking-wider mb-1">Плейлист</p>
                     <h1 className="text-3xl md:text-5xl font-bold mb-2">{playlist.name}</h1>
                     <div className="flex items-center gap-2 text-sm opacity-80">
-                        <p>{tracks.length} {tracks.length === 1 ? 'song' : 'songs'}</p>
+                        <p>{tracks.length} {tracks.length === 1 ? 'песня' : 'песен'}</p>
                         <span>•</span>
                         <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />

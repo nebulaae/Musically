@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAudio } from "@/components/player/AudioContext";
 import { useDebounce } from "./useDebounce";
+import { Track } from "@/db/models/tracks.model";
+import { useAudio } from "@/components/player/AudioContext";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 export const useSearch = () => {
     const [searchQuery, setSearchQuery] = useState<string>("");
@@ -25,20 +26,20 @@ export const useSearch = () => {
                 const response = await fetch('/api/tracks');
 
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch tracks: ${response.status} ${response.statusText}`);
+                    throw new Error(`Ошибка при загрузке песен: ${response.status} ${response.statusText}`);
                 }
 
                 const data = await response.json();
 
-                if (Array.isArray(data)) {
-                    setAllTracks(data);
-                    setSearchResults(data); // Initially show all tracks
+                if (data && data.tracks && Array.isArray(data.tracks)) {
+                    setAllTracks(data.tracks);
+                    setSearchResults(data.tracks); // Initially show all tracks
                 } else {
-                    setError('No tracks found');
+                    setError('Песни не найдены. Возможно некорректный формат');
                 }
             } catch (err) {
-                console.error('Error fetching tracks:', err);
-                setError(err instanceof Error ? err.message : 'Unknown error fetching tracks');
+                console.error('Ошибка при загрузке песен:', err);
+                setError(err instanceof Error ? err.message : 'Возникла неизвестная ошибка при загрузке песен.');
             } finally {
                 setIsLoading(false);
             }
@@ -58,30 +59,33 @@ export const useSearch = () => {
 
         const filtered = allTracks.filter(track =>
             track.title.toLowerCase().includes(normalizedQuery) ||
-            track.author!.toLowerCase().includes(normalizedQuery) ||
+            track.author.toLowerCase().includes(normalizedQuery) ||
             (track.album && track.album.toLowerCase().includes(normalizedQuery)) ||
             track.id.includes(normalizedQuery)
         );
 
         setSearchResults(filtered);
-    }, [debouncedSearchQuery, allTracks]);
-
-    // Reset to first page when search query changes
-    useEffect(() => {
+        // Reset to first page when results change
         setCurrentPage(1);
-    }, [debouncedSearchQuery]);
+    }, [debouncedSearchQuery, allTracks]);
 
     // Handle search input change
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
     }, []);
 
-    // Handle track selection
+    // Handle track selection with correct index calculation
     const handleTrackSelect = useCallback((index: number) => {
-        playTrackAtIndex(index, searchResults);
-    }, [playTrackAtIndex, searchResults]);
+        // The index passed from FetchTracks is relative to the current page
+        // We need to adjust it to the actual index in searchResults
+        const actualIndex = (currentPage - 1) * tracksPerPage + index;
+        playTrackAtIndex(actualIndex, searchResults);
+    }, [playTrackAtIndex, searchResults, currentPage]);
 
-    const totalPages = useMemo(() => Math.ceil(searchResults.length / tracksPerPage), [searchResults.length]);
+    const totalPages = useMemo(() =>
+        Math.max(1, Math.ceil(searchResults.length / tracksPerPage)),
+        [searchResults.length]
+    );
 
     // Get current tracks for the current page
     const currentPageTracks = useMemo(() => {
@@ -89,7 +93,6 @@ export const useSearch = () => {
         return searchResults.slice(startIndex, startIndex + tracksPerPage);
     }, [searchResults, currentPage]);
 
-    // Update the return statement to include these new values
     return {
         searchQuery,
         searchResults,
