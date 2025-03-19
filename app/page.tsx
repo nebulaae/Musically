@@ -28,7 +28,6 @@ const Page = () => {
                 <div className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-row items-center justify-between">
                         <h1 className="title-text">Все</h1>
-                        <p className="link-text">Смотреть все</p>
                     </div>
                     <FetchTracks
                         tracks={all.tracks}
@@ -45,7 +44,6 @@ const Page = () => {
                 <div className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-row items-center justify-between">
                         <h1 className="title-text">Lil Tecca</h1>
-                        <p className="link-text">Смотреть все</p>
                     </div>
                     <FetchTracks
                         tracks={collection.tracks}
@@ -57,7 +55,6 @@ const Page = () => {
                 <div className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-row items-center justify-between">
                         <h1 className="title-text">PlayboiCarti</h1>
-                        <p className="link-text">Смотреть все</p>
                     </div>
                     <FetchTracks
                         tracks={cartiCollection.tracks}
