@@ -168,13 +168,17 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
     };
   }, [cacheKey]);
 
-  const handleTrackSelect = useCallback(
-    (index: number, trackList?: Track[]) => {
-      const tracksToUse = trackList?.length ? trackList : allTracks.length ? allTracks : tracks;
-      playTrackAtIndex(index, tracksToUse);
-    },
-    [playTrackAtIndex, tracks, allTracks]
-  );
+  const handleTrackSelect = useCallback((index: number, trackList?: Track[]) => {
+    // If a specific track list is provided, use it directly
+    if (trackList && trackList.length > 0) {
+      playTrackAtIndex(index, trackList);
+      return;
+    }
+
+    // Fallback to using all tracks
+    const tracksToUse = allTracks.length > 0 ? allTracks : tracks;
+    playTrackAtIndex(index, tracksToUse);
+  }, [playTrackAtIndex, tracks, allTracks]);
 
   return useMemo(
     () => ({

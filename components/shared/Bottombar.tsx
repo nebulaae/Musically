@@ -7,7 +7,7 @@ import {
     Home,
     Search,
     LibraryBig,
-    UserRound
+    Heart
 } from "lucide-react";
 
 export const Bottombar = () => {
@@ -28,15 +28,15 @@ export const Bottombar = () => {
         },
         {
             id: 3,
-            title: "Подборки",
-            url: "/collections",
+            title: "Плейлисты",
+            url: "/playlist",
             icon: <LibraryBig />,
         },
         {
             id: 4,
-            title: "Профиль",
-            url: "/profile",
-            icon: <UserRound />,
+            title: "Понравившиеся",
+            url: "/favorite",
+            icon: <Heart />,
         },
     ]
 

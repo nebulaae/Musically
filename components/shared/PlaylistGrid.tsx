@@ -46,7 +46,6 @@ export const PlaylistGrid = () => {
     return (
         <div className="w-full">
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Ваши плейлисты</h2>
                 <Button
                     onClick={() => setIsCreateDialogOpen(true)}
                     className="flex items-center gap-2 bg-purple-200/50 text-purple-800 hover:bg-purple-300"

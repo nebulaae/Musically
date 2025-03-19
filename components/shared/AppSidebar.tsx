@@ -6,9 +6,9 @@ import {
     Home,
     Search,
     LibraryBig,
-    UserRound,
-    ChevronLeft,
-    ChevronRight,
+    Heart,
+    PanelRightClose,
+    PanelRightOpen,
 } from "lucide-react";
 
 import {
@@ -38,15 +38,15 @@ const links = [
     },
     {
         id: 3,
-        title: "Подборки",
-        url: "/collections",
+        title: "Плейлисты",
+        url: "/playlist",
         icon: <LibraryBig />,
     },
     {
         id: 4,
-        title: "Профиль",
-        url: "/profile",
-        icon: <UserRound />,
+        title: "Понравившиеся",
+        url: "/favorite",
+        icon: <Heart />,
     },
 ]
 
@@ -58,7 +58,7 @@ export const AppSidebar = () => {
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu className="mt-12">
+                        <SidebarMenu className="mt-14">
                             {links.map((link) => {
                                 const isActive = pathname === link.url;
                                 return (
@@ -88,8 +88,8 @@ export const Trigger = () => {
 
     return (
         <div>
-            <div onClick={toggleSidebar} className="fixed hidden cursor-pointer select-none -translate-x-4 mt-4 z-50 md:flex bg-purple-200/50 rounded-full">
-                {open ? <ChevronLeft className="size-8 text-purple-800" strokeWidth={1.25} /> : <ChevronRight className="size-8 text-purple-800" strokeWidth={1.25} />}
+            <div onClick={toggleSidebar} className="fixed hidden cursor-pointer select-none -translate-x-10 mt-4 z-50 md:flex">
+                {open ? <PanelRightClose className="size-6 text-purple-800" /> : <PanelRightOpen className="size-6 text-purple-800" />}
             </div>
         </div>
     );

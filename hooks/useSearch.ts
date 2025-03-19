@@ -23,7 +23,7 @@ export const useSearch = () => {
         const fetchAllTracks = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch('/api/tracks');
+                const response = await fetch('/api/tracks?limit=1000'); // You can vary the limit to fetch for search page
 
                 if (!response.ok) {
                     throw new Error(`Ошибка при загрузке песен: ${response.status} ${response.statusText}`);
@@ -74,13 +74,17 @@ export const useSearch = () => {
         setSearchQuery(e.target.value);
     }, []);
 
-    // Handle track selection with correct index calculation
-    const handleTrackSelect = useCallback((index: number) => {
-        // The index passed from FetchTracks is relative to the current page
-        // We need to adjust it to the actual index in searchResults
-        const actualIndex = (currentPage - 1) * tracksPerPage + index;
-        playTrackAtIndex(actualIndex, searchResults);
-    }, [playTrackAtIndex, searchResults, currentPage]);
+    // Handle track selection
+    const handleTrackSelect = useCallback((index: number, trackList?: Track[]) => {
+        if (trackList) {
+            // If a specific track list is provided, use it
+            playTrackAtIndex(index, trackList);
+        } else {
+            // Otherwise, use the full searchResults
+            const actualIndex = (currentPage - 1) * tracksPerPage + index;
+            playTrackAtIndex(actualIndex, searchResults);
+        }
+    }, [playTrackAtIndex, searchResults, currentPage, tracksPerPage]);
 
     const totalPages = useMemo(() =>
         Math.max(1, Math.ceil(searchResults.length / tracksPerPage)),

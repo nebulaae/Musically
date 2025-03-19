@@ -148,7 +148,7 @@ interface FetchTracksProps {
   tracks: Track[];
   isLoading: boolean;
   error: string | null;
-  handleTrackSelect: (index: number) => void;
+  handleTrackSelect: (index: number, trackList?: Track[]) => void;
   layout?: 'blocks' | 'list';
   variant?: 'flex' | 'grid';
   totalPages?: number;
@@ -168,27 +168,6 @@ export const FetchTracks = memo(({
   goToPage = () => { }
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
-  
-  // Keep track of all tracks across all pages
-  const tracksRef = useRef<Track[]>([]);
-  const limit = tracks.length || 10;
-  
-  // Update our ref when tracks change
-  useEffect(() => {
-    // We need to ensure we maintain the same tracks array structure
-    // Update only the section for the current page
-    const startIndex = (currentPage - 1) * limit;
-    
-    // Initialize the array if needed
-    if (!tracksRef.current || tracksRef.current.length === 0) {
-      tracksRef.current = new Array(limit * totalPages).fill(null);
-    }
-    
-    // Update the section of the array for the current page
-    for (let i = 0; i < tracks.length; i++) {
-      tracksRef.current[startIndex + i] = tracks[i];
-    }
-  }, [tracks, currentPage, limit, totalPages]);
 
   // Check if a track is the currently playing track (memoized)
   const getTrackPlayingState = useCallback((track: Track) => {
@@ -222,21 +201,12 @@ export const FetchTracks = memo(({
     return isPlaying;
   }, [getTrackPlayingState]);
 
-  // Create a function that calculates the absolute index for a track
-  const calculateAbsoluteIndex = useCallback((localIndex: number) => {
-    return (currentPage - 1) * limit + localIndex;
-  }, [currentPage, limit]);
-
-  // Create modified handleTrackSelect that uses our ref to get all tracks
-  const handleTrackSelectWithPagination = useCallback((localIndex: number) => {
-    // Calculate absolute index
-    const absoluteIndex = calculateAbsoluteIndex(localIndex);
-    
-    console.log(localIndex)
-
-    // Call original handler with the filtered tracks array and absolute index
-    handleTrackSelect(absoluteIndex);
-  }, [calculateAbsoluteIndex, handleTrackSelect]);
+  // Handle track selection - passing only the current page's tracks
+  // This is the key fix - we're not trying to calculate absolute indexes anymore
+  const handleTrackSelection = useCallback((index: number) => {
+    // Simply pass the index within the current page's tracks array
+    handleTrackSelect(index, tracks);
+  }, [handleTrackSelect, tracks]);
 
   // For loading state
   if (isLoading) {
@@ -302,9 +272,9 @@ export const FetchTracks = memo(({
             <TrackItem
               key={track.id}
               track={track}
-              index={calculateAbsoluteIndex(index)}
+              index={index}
               isPlaying={isTrackPlaying(track)}
-              handleTrackSelect={handleTrackSelectWithPagination}
+              handleTrackSelect={handleTrackSelection}
             />
           ))}
         </div>
@@ -321,9 +291,9 @@ export const FetchTracks = memo(({
           <ListTrackItem
             key={track.id}
             track={track}
-            index={calculateAbsoluteIndex(index)}
+            index={index}
             isPlaying={isTrackPlaying(track)}
-            handleTrackSelect={handleTrackSelectWithPagination}
+            handleTrackSelect={handleTrackSelection}
           />
         ))}
       </div>

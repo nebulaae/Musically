@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { Check, CirclePlusIcon, EllipsisVertical } from 'lucide-react';
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 interface PlaylistProps {
   trackId: string;

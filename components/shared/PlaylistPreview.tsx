@@ -1,10 +1,11 @@
 "use client"
 
 import Link from 'next/link';
+
 import { useState } from 'react';
-import { Music, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 import { Playlist } from '@/db/models/user.model';
 import { usePlaylist } from '@/hooks/usePlaylist';
+import { Music, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 
 import {
     DropdownMenu,

@@ -219,7 +219,7 @@ const BottomPlayer = () => {
             >
                 {/* Drag handle indicator */}
                 {!isExpanded && (
-                    <div className="w-full flex justify-center items-center mb-2">
+                    <div className="w-full flex justify-center items-center mb-2 cursor-grab">
                         <div className="w-12 h-1 bg-gray-300 rounded-full" />
                     </div>
                 )}

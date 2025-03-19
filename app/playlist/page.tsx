@@ -6,14 +6,6 @@ import { Track } from "@/db/models/tracks.model";
 import { getCurrentUser, getLikedSongs } from "@/db/actions/user.actions";
 
 import { useAudio } from "@/components/player/AudioContext";
-import { FetchTracks } from "@/components/shared/FetchTracks";
-import { PlaylistPreview } from "@/components/shared/PlaylistPreview";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger
-} from "@/components/ui/tabs";
 import { PlaylistGrid } from "@/components/shared/PlaylistGrid";
 
 const Page = () => {
@@ -21,8 +13,6 @@ const Page = () => {
     const [likedSongs, setLikedSongs] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const { playTrackAtIndex } = useAudio();
 
     useEffect(() => {
         const fetchLikedSongs = async () => {
@@ -45,36 +35,15 @@ const Page = () => {
         fetchLikedSongs();
     }, []);
 
-    const handleTrackSelect = (index: number) => {
-        playTrackAtIndex(index, likedSongs);
-    };
-
     return (
         <section className="flex flex-col items-center w-full pb-32">
             <div className="container">
                 <div className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-row items-center justify-between">
-                        <h1 className="title-text">Здраствуйте!</h1>
+                        <h1 className="title-text">Ваши плейлисты</h1>
                     </div>
-                    {/* TABS */}
-                    <Tabs defaultValue="favorite">
-                        <TabsList className="w-full">
-                            <TabsTrigger value="favorite">Понравившееся</TabsTrigger>
-                            <TabsTrigger value="playlists">Плейлисты</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="favorite">
-                            <FetchTracks
-                                tracks={likedSongs}
-                                isLoading={isLoading}
-                                error={error}
-                                handleTrackSelect={handleTrackSelect}
-                                layout="list"
-                            />
-                        </TabsContent>
-                        <TabsContent value="playlists">
-                            <PlaylistGrid />
-                        </TabsContent>
-                    </Tabs>
+                    {error && (<p></p>)}
+                    <PlaylistGrid />
                 </div>
             </div>
         </section>
