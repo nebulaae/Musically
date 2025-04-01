@@ -89,7 +89,7 @@ export const Trigger = () => {
     return (
         <div>
             <div onClick={toggleSidebar} className="fixed hidden cursor-pointer select-none -translate-x-10 mt-4 z-50 md:flex">
-                {open ? <PanelRightClose className="size-6 text-purple-800" /> : <PanelRightOpen className="size-6 text-purple-800" />}
+                {open ? <PanelRightOpen className="size-6 text-purple-800" /> : <PanelRightClose className="size-6 text-purple-800" />}
             </div>
         </div>
     );

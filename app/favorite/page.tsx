@@ -48,7 +48,6 @@ const Page = () => {
                     <div className="flex flex-row items-center justify-between">
                         <h1 className="title-text">Понравившиеся песни</h1>
                     </div>
-                    {/* TABS */}
                     <FetchTracks
                         tracks={likedSongs}
                         isLoading={isLoading}

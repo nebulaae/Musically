@@ -5,6 +5,7 @@ import BottomPlayer from "@/components/player/BottomPlayer";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Bottombar } from "@/components/shared/Bottombar";
+import { Initialize } from "@/components/shared/Initialize";
 import { AudioProvider } from "@/components/player/AudioContext";
 import { AppSidebar, Trigger } from "@/components/shared/AppSidebar";
 
@@ -38,11 +39,13 @@ export default async function RootLayout({
       >
         <SidebarProvider>
           <AudioProvider>
-            <AppSidebar />
-            <Trigger />
-            {children}
-            <BottomPlayer />
-            <Bottombar />
+            <Initialize>
+              <AppSidebar />
+              <Trigger />
+              {children}
+              <BottomPlayer />
+              <Bottombar />
+            </Initialize>
           </AudioProvider>
         </SidebarProvider>
       </body>

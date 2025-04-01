@@ -4,12 +4,13 @@ import { Track } from '../models/tracks.model';
 export async function syncTracksFromAPI(): Promise<Track[]> {
     try {
         // Fetch tracks from the API
-        const response = await fetch('/api/tracks');
+        const response = await fetch('/api/tracks?limit=1000'); // Get a large limit to fetch all tracks at once
         if (!response.ok) {
             throw new Error(`Failed to fetch tracks: ${response.status}`);
         }
 
-        const newTracks: Track[] = await response.json();
+        const data = await response.json();
+        const newTracks: Track[] = data.tracks; // Access the tracks array from the response
 
         // Store tracks in the database while preserving existing tracks
         await db.transaction('rw', db.tracks, async () => {

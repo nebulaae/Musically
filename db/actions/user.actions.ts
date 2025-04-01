@@ -16,7 +16,7 @@ export async function getCurrentUser(): Promise<User> {
             name: 'User',
             likedSongs: [],
             playlists: [],
-            onboarding: false
+            onboarding: true
         };
 
         await db.users.add(newUser);
