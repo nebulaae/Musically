@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import { useSearch } from "@/hooks/useSearch";
-import { FetchTracks } from "@/components/shared/FetchTracks";
+import { FetchTracks } from "@/components/functions/FetchTracks";
 
 const SearchPage = () => {
     const {
@@ -71,15 +71,15 @@ const SearchPage = () => {
                     <div className="mb-6">
                         <h2 className="title-text mb-8">Результаты поиска</h2>
                         <FetchTracks
-  tracks={currentPageTracks}
-  isLoading={isLoading}
-  error={error}
-  handleTrackSelect={handleTrackSelect}
-  layout="list"
-  totalPages={totalPages} // Make sure this is being passed
-  currentPage={currentPage} // Make sure this is being passed
-  goToPage={goToPage}
-/>
+                            tracks={currentPageTracks}
+                            isLoading={isLoading}
+                            error={error}
+                            handleTrackSelect={handleTrackSelect}
+                            layout="list"
+                            totalPages={totalPages} // Make sure this is being passed
+                            currentPage={currentPage} // Make sure this is being passed
+                            goToPage={goToPage}
+                        />
                     </div>
                 ) : (
                     <div className="mb-6">

@@ -6,7 +6,7 @@ import { Track } from "@/db/models/tracks.model";
 import { getCurrentUser, getLikedSongs } from "@/db/actions/user.actions";
 
 import { useAudio } from "@/components/player/AudioContext";
-import { FetchTracks } from "@/components/shared/FetchTracks";
+import { FetchTracks } from "@/components/functions/FetchTracks";
 
 const Page = () => {
     const [user, setUser] = useState<User | null>(null);

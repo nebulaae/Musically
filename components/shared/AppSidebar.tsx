@@ -9,6 +9,7 @@ import {
     Heart,
     PanelRightClose,
     PanelRightOpen,
+    Settings,
 } from "lucide-react";
 
 import {
@@ -47,6 +48,12 @@ const links = [
         title: "Понравившиеся",
         url: "/favorite",
         icon: <Heart />,
+    },
+    {
+        id: 5,
+        title: "Настройки",
+        url: "/settings",
+        icon: <Settings />,
     },
 ]
 

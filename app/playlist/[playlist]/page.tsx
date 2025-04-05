@@ -11,7 +11,7 @@ import { Track } from '@/db/models/tracks.model';
 import { Playlist } from '@/db/models/user.model';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { useAudio } from '@/components/player/AudioContext';
-import { FetchTracks } from '@/components/shared/FetchTracks';
+import { FetchTracks } from '@/components/functions/FetchTracks';
 import { Music, Play, PauseIcon, Calendar } from "lucide-react";
 
 interface PlaylistPageProps {
@@ -33,25 +33,25 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     // Generate a random gradient for the playlist header
     const generateGradient = () => {
         const gradients: string[] = [
-            'bg-gradient-to-br from-violet-600 to-indigo-600',
-            'bg-gradient-to-r from-pink-500 to-rose-500',
+            'bg-gradient-to-br from-violet-300 to-indigo-300',
+            'bg-gradient-to-r from-pink-200 to-rose-200',
             'bg-gradient-to-tr from-violet-200 to-pink-200',
-            'bg-gradient-to-r from-fuchsia-600 to-purple-600',
-            'bg-gradient-to-tl from-purple-500 to-purple-900',
-            'bg-gradient-to-r from-emerald-500 to-emerald-900',
-            'bg-gradient-to-bl from-emerald-400 to-cyan-400',
-            'bg-gradient-to-r from-indigo-400 to-cyan-400',
+            'bg-gradient-to-r from-fuchsia-300 to-purple-300',
+            'bg-gradient-to-tl from-purple-200 to-purple-500',
+            'bg-gradient-to-r from-emerald-200 to-emerald-600',
+            'bg-gradient-to-bl from-emerald-200 to-cyan-200',
+            'bg-gradient-to-r from-indigo-200 to-cyan-200',
             'bg-gradient-to-br from-blue-200 to-cyan-200',
-            'bg-gradient-to-r from-amber-200 to-yellow-500',
-            'bg-gradient-to-b from-amber-500 to-pink-500',
-            'bg-gradient-to-r from-teal-200 to-teal-500',
+            'bg-gradient-to-r from-amber-200 to-yellow-200',
+            'bg-gradient-to-b from-amber-200 to-pink-200',
+            'bg-gradient-to-r from-teal-200 to-teal-200',
             'bg-gradient-to-t from-blue-200 to-cyan-200',
-            'bg-gradient-to-l from-amber-200 to-yellow-400',
-            'bg-gradient-to-r from-teal-400 to-yellow-200',
-            'bg-gradient-to-tl from-purple-500 to-purple-900',
-            'bg-gradient-to-tr from-slate-300 to-slate-500',
-            'bg-gradient-to-b from-slate-900 to-slate-700',
-            'bg-gradient-to-r from-slate-500 to-slate-800'
+            'bg-gradient-to-l from-amber-200 to-yellow-200',
+            'bg-gradient-to-r from-teal-200 to-yellow-200',
+            'bg-gradient-to-tl from-purple-200 to-purple-500',
+            'bg-gradient-to-tr from-slate-200 to-slate-300',
+            'bg-gradient-to-b from-slate-500 to-slate-600',
+            'bg-gradient-to-r from-slate-400 to-slate-500'
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];

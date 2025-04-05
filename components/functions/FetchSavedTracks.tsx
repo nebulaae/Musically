@@ -1,12 +1,21 @@
 "use client"
 
 import Image from 'next/image';
-import { memo, useMemo, useCallback, useRef, useEffect } from 'react';
+
+import { Skeleton } from '../ui/skeleton';
 import { Play, Pause } from 'lucide-react';
 import { SoundWave } from '../ui/magic/SoundWave';
 import { PlaylistActions } from './PlaylistActions';
+import { LikeButton } from '@/components/functions/LikeButton';
+
 import { useAudio } from '@/components/player/AudioContext';
-import { LikeButton } from '@/components/shared/LikeButton';
+import {
+    memo,
+    useMemo,
+    useCallback,
+    useRef,
+    useEffect
+} from 'react';
 
 interface TrackItemProps {
     track: Track;
@@ -169,7 +178,31 @@ export const FetchSavedTracks = memo(({
 
     // For loading state
     if (isLoading) {
-        return <div className="text-start py-4">Загружаем песни...</div>;
+        if (layout === 'blocks') {
+            return (
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {Array.from({ length: 10 }).map((_, index) => (
+                        <div key={index} className="space-y-2">
+                            <Skeleton className="w-full h-[250px] rounded-xl" />
+                            <Skeleton className="h-8 w-full" />
+                        </div>
+                    ))}
+                </div>
+            )
+        }
+
+        if (layout === "list") {
+            return (
+                <div className="flex flex-col w-full gap-4">
+                    {Array.from({ length: 10 }).map((_, index) => (
+                        <div key={index} className="flex flex-row gap-2">
+                            <Skeleton className="w-12 h-12 rounded-full" />
+                            <Skeleton className="h-12 w-full" />
+                        </div>
+                    ))}
+                </div>
+            )
+        }
     }
 
     // For error state

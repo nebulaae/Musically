@@ -5,7 +5,6 @@ import { User } from "@/db/models/user.model";
 import { Track } from "@/db/models/tracks.model";
 import { getCurrentUser, getLikedSongs } from "@/db/actions/user.actions";
 
-import { useAudio } from "@/components/player/AudioContext";
 import { PlaylistGrid } from "@/components/shared/PlaylistGrid";
 
 const Page = () => {

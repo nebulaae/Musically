@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
-import { LikeButton } from '@/components/shared/LikeButton';
+import { LikeButton } from '@/components/functions/LikeButton';
 import {
     Volume1,
     Volume2,
@@ -364,7 +364,12 @@ const BottomPlayer = () => {
 
                     {/* Volume Control */}
                     <div className="hidden md:flex items-center space-x-2 md:w-40 justify-end order-3">
-                        {volume === 0 ? <VolumeX className='w-6 h-6' /> : volume < 0.5 ? <Volume1 className='w-6 h-6' /> : <Volume2 className='w-6 h-6' />}
+                        {volume === 0 ?
+                            <VolumeX className='w-6 h-6 cursor-pointer' onClick={() => setVolume(0.5)} /> :
+                            volume < 0.5 ?
+                                <Volume1 className='w-6 h-6 cursor-pointer' onClick={() => setVolume(0)} /> :
+                                <Volume2 className='w-6 h-6 cursor-pointer' onClick={() => setVolume(0)} />
+                        }
                         <Slider
                             value={[volume * 100]}
                             max={100}

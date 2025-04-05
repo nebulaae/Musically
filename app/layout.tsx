@@ -5,7 +5,8 @@ import BottomPlayer from "@/components/player/BottomPlayer";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Bottombar } from "@/components/shared/Bottombar";
-import { Initialize } from "@/components/shared/Initialize";
+import { Initialize } from "@/components/functions/Initialize";
+import { ThemeProviders } from "./providers/ThemeProviders";
 import { AudioProvider } from "@/components/player/AudioContext";
 import { AppSidebar, Trigger } from "@/components/shared/AppSidebar";
 
@@ -37,17 +38,19 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider>
-          <AudioProvider>
-            <Initialize>
-              <AppSidebar />
-              <Trigger />
-              {children}
-              <BottomPlayer />
-              <Bottombar />
-            </Initialize>
-          </AudioProvider>
-        </SidebarProvider>
+        <ThemeProviders>
+          <SidebarProvider>
+            <AudioProvider>
+              <Initialize>
+                <AppSidebar />
+                <Trigger />
+                {children}
+                <BottomPlayer />
+                <Bottombar />
+              </Initialize>
+            </AudioProvider>
+          </SidebarProvider>
+        </ThemeProviders>
       </body>
     </html>
   );

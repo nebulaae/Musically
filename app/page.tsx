@@ -1,21 +1,10 @@
+
 "use client"
 
 import { useTracks } from "@/hooks/useTracks";
-import { FetchTracks } from "@/components/shared/FetchTracks";
+import { FetchTracks } from "@/components/functions/FetchTracks";
 
 const Page = () => {
-    const collection = useTracks(({
-        trackNames: ["YVES - Lil Tecca.m4a", "1_1 - HVN ON EARTH - Lil Tecca  Kodak Black (128).mp3"], // render selected tracks
-        page: 1, // default page
-        limit: 10 // fetch limit for next page
-    }));
-
-    const cartiCollection = useTracks(({
-        trackNames: ["Magnolia.mp3", "Cancun.mp3"],
-        page: 1,
-        limit: 10
-    }));
-
     const all = useTracks(({
         trackNames: [], // if no names, it will render all tracks
         page: 1,

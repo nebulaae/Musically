@@ -7,7 +7,8 @@ import {
     Home,
     Search,
     LibraryBig,
-    Heart
+    Heart,
+    Settings
 } from "lucide-react";
 
 export const Bottombar = () => {
@@ -37,6 +38,12 @@ export const Bottombar = () => {
             title: "Понравившиеся",
             url: "/favorite",
             icon: <Heart />,
+        },
+        {
+            id: 5,
+            title: "Настройки",
+            url: "/settings",
+            icon: <Settings />,
         },
     ]
 
