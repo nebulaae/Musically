@@ -30,6 +30,7 @@ const Page = () => {
                         goToPage={all.goToPage}
                     />
                 </div>
+                
             </div>
         </section>
     );

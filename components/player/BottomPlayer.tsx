@@ -191,7 +191,7 @@ const BottomPlayer = () => {
     return (
         <AnimatePresence>
             <motion.footer
-                className={`fixed ${isExpanded ? 'inset-0 bg-white pb-32' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'} bg-sidebar glassmorphism border-t-[1px] border-neutral-200 p-4 z-100`}
+                className={`fixed bg-sidebar glassmorphism ${isExpanded ? 'inset-0 pb-32' : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full'}  p-4 z-100`}
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0 }}
                 exit={{ y: 300, opacity: 0 }}
@@ -289,7 +289,7 @@ const BottomPlayer = () => {
                             <div className={`flex items-center space-x-3 md:space-x-6 ${isExpanded ? 'mb-6' : 'mb-4'}`}>
                                 {/* Shuffle Button */}
                                 <motion.button
-                                    className={`p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer text-purple-800 hover:bg-gray-100' : 'cursor-pointer hover:bg-gray-100'}`}
+                                    className={`p-3 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'cursor-pointer purple-accent' : 'cursor-pointer purple-accent-hover'}`}
                                     onClick={handleShuffleToggle}
                                     whileTap={hasShuffle ? { scale: 0.9 } : undefined}
                                     disabled={!hasShuffle}
@@ -299,7 +299,7 @@ const BottomPlayer = () => {
 
                                 {/* Previous Track Button */}
                                 <motion.button
-                                    className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                                    className={`p-2 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'purple-accent-hover cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                     onClick={hasPrevTrack && !isButtonDisabled ? handlePrevTrack : undefined}
                                     whileTap={hasPrevTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
                                     disabled={!hasPrevTrack || isButtonDisabled}
@@ -309,7 +309,7 @@ const BottomPlayer = () => {
 
                                 {/* Play/Pause Button */}
                                 <motion.button
-                                    className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                    className={`p-3 font-thin ${isExpanded ? 'p-5' : ''} ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'purple-accent-hover cursor-pointer rounded-full'}`}
                                     onClick={handlePlayPauseToggle}
                                     whileTap={!isButtonDisabled ? { scale: 0.9 } : undefined}
                                     disabled={isButtonDisabled}
@@ -325,7 +325,7 @@ const BottomPlayer = () => {
 
                                 {/* Next Track Button */}
                                 <motion.button
-                                    className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-gray-100 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                                    className={`p-2 rounded-full ${hasNextTrack && !isButtonDisabled ? 'purple-accent-hover  cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                     onClick={hasNextTrack && !isButtonDisabled ? handleNextTrack : undefined}
                                     whileTap={hasNextTrack && !isButtonDisabled ? { scale: 0.9 } : undefined}
                                     disabled={!hasNextTrack || isButtonDisabled}
@@ -336,7 +336,7 @@ const BottomPlayer = () => {
                                 {/* Repeat Button */}
                                 <motion.div whileTap={{ scale: 0.9 }}>
                                     <Toggle
-                                        className={`rounded-full`}
+                                        className={`rounded-full `}
                                         pressed={repeatMode}
                                         onPressedChange={() => toggleRepeatMode()}
                                         size="lg"

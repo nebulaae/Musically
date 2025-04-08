@@ -48,13 +48,6 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
                     // Add priority loading for visible tracks
                     priority={index < 4}
                 />
-                <div className="absolute flex items-end justify-end inset-0 p-4 z-10">
-                    <LikeButton
-                        trackId={track.id}
-                        size="md"
-                        className="ml-2 bg-white/50 glassmorphism p-2 rounded-full shadow-lg"
-                    />
-                </div>
 
                 {isPlaying && (
                     <div className="absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
@@ -76,7 +69,13 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
                     <h3 className="font-semibold">{track.title}</h3>
                     <p className="text-sm text-gray-500">{track.author}</p>
                 </div>
-                <PlaylistActions trackId={track.id} />
+                <div className="flex items-center gap-2">
+                    <LikeButton
+                        trackId={track.id}
+                        size="md"
+                    />
+                    <PlaylistActions trackId={track.id} />
+                </div>
             </div>
         </div>
     );
@@ -92,7 +91,7 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
 
     return (
         <div
-            className={`flex items-center p-3 hover:bg-neutral-100 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 rounded-xl' : ''}`}
+            className={`flex items-center p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 dark:bg-neutral-700 rounded-xl' : ''}`}
         >
             <div
                 className="flex items-center flex-1 min-w-0"
@@ -196,7 +195,7 @@ export const FetchSavedTracks = memo(({
                 <div className="flex flex-col w-full gap-4">
                     {Array.from({ length: 10 }).map((_, index) => (
                         <div key={index} className="flex flex-row gap-2">
-                            <Skeleton className="w-12 h-12 rounded-full" />
+                            <Skeleton className="w-12 h-12" />
                             <Skeleton className="h-12 w-full" />
                         </div>
                     ))}

@@ -22,8 +22,8 @@ export const ThemeSwitcher = () => {
 
     const handleThemeChange = () => {
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
         localStorage.setItem('theme', newTheme);
+        setTheme(newTheme); // Set theme after updating localStorage
     };
 
     return (

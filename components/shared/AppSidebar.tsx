@@ -73,10 +73,10 @@ export const AppSidebar = () => {
                                         <SidebarMenuButton asChild>
                                             <Link
                                                 href={link.url}
-                                                className={`flex flex-row items-center px-4 ${isActive ? 'before:absolute before:-left-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800' : ''}`}
+                                                className={`flex flex-row items-center px-4 ${isActive ? 'before:absolute before:-left-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800 dark:before:bg-purple-400' : ''}`}
                                             >
-                                                <div className={`flex items-center justify-center size-8 ${isActive ? 'text-purple-800' : ''}`}>{link.icon}</div>
-                                                <span className={`text-[18px] ${isActive ? 'text-purple-800' : ''}`}>{link.title}</span>
+                                                <div className={`flex items-center justify-center size-8 ${isActive ? 'purple-text' : ''}`}>{link.icon}</div>
+                                                <span className={`text-[18px] ${isActive ? 'purple-text' : ''}`}>{link.title}</span>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
@@ -96,7 +96,7 @@ export const Trigger = () => {
     return (
         <div>
             <div onClick={toggleSidebar} className="fixed hidden cursor-pointer select-none -translate-x-10 mt-4 z-50 md:flex">
-                {open ? <PanelRightOpen className="size-6 text-purple-800" /> : <PanelRightClose className="size-6 text-purple-800" />}
+                {open ? <PanelRightOpen className="size-6 purple-text" /> : <PanelRightClose className="size-6 purple-text" />}
             </div>
         </div>
     );

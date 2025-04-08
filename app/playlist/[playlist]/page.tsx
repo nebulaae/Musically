@@ -4,6 +4,7 @@ import Image from "next/image";
 
 import { use } from "react";
 import { ru } from 'date-fns/locale'
+import { useTheme } from "next-themes";
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,9 @@ interface PlaylistPageProps {
 }
 
 export default function PlaylistPage({ params }: PlaylistPageProps) {
+    // Get the theme
+    const { theme } = useTheme();
+
     // Unwrap params with React.use()
     const resolvedParams = use(params);
     const playlistId = resolvedParams.playlist;
@@ -29,33 +33,34 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const [playlistData, setPlaylistData] = useState<{ playlist: Playlist; tracks: Track[] } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [gradient, setGradient] = useState<string | null>(null);
+    const [darkGradient, setDarkGradient] = useState<string | null>(null);
+
 
     // Generate a random gradient for the playlist header
     const generateGradient = () => {
         const gradients: string[] = [
-            'bg-gradient-to-br from-violet-300 to-indigo-300',
-            'bg-gradient-to-r from-pink-200 to-rose-200',
-            'bg-gradient-to-tr from-violet-200 to-pink-200',
-            'bg-gradient-to-r from-fuchsia-300 to-purple-300',
-            'bg-gradient-to-tl from-purple-200 to-purple-500',
-            'bg-gradient-to-r from-emerald-200 to-emerald-600',
-            'bg-gradient-to-bl from-emerald-200 to-cyan-200',
-            'bg-gradient-to-r from-indigo-200 to-cyan-200',
-            'bg-gradient-to-br from-blue-200 to-cyan-200',
-            'bg-gradient-to-r from-amber-200 to-yellow-200',
-            'bg-gradient-to-b from-amber-200 to-pink-200',
-            'bg-gradient-to-r from-teal-200 to-teal-200',
-            'bg-gradient-to-t from-blue-200 to-cyan-200',
-            'bg-gradient-to-l from-amber-200 to-yellow-200',
-            'bg-gradient-to-r from-teal-200 to-yellow-200',
-            'bg-gradient-to-tl from-purple-200 to-purple-500',
-            'bg-gradient-to-tr from-slate-200 to-slate-300',
-            'bg-gradient-to-b from-slate-500 to-slate-600',
-            'bg-gradient-to-r from-slate-400 to-slate-500'
+            'bg-gradient-to-r from-violet-400 to-pink-200',
+            'bg-gradient-to-l from-blue-400 to-cyan-200',
+            'bg-gradient-to-l from-teal-400 to-teal-500',
+            'bg-gradient-to-bl from-rose-200 to-pink-200',
+            'bg-gradient-to-tr from-fuchsia-400 to-violet-400',
+            'bg-gradient-to-bl from-blue-400 to-cyan-400',
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
     };
+
+    const generateDarkGradient = () => {
+        const gradients: string[] = [
+            'bg-gradient-to-r from-slate-900 to-slate-700',
+            'bg-gradient-to-r from-slate-500 to-slate-800',
+            'bg-gradient-to-r from-blue-800 to-indigo-900',
+            'bg-gradient-to-r from-violet-800 to-indigo-700',
+        ];
+
+        return gradients[Math.floor(Math.random() * gradients.length)];
+    };
+
     const { playTrackAtIndex, isPlaying, togglePlayPause, currentTrackIndex, tracks: currentTracks } = useAudio();
 
     useEffect(() => {
@@ -65,6 +70,9 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                 const data = await getPlaylistById(playlistId);
                 if (!gradient) {
                     setGradient(generateGradient())
+                }
+                if (!darkGradient && theme == 'dark') {
+                    setDarkGradient(generateDarkGradient())
                 }
                 setPlaylistData(data);
             } catch (error) {
@@ -138,7 +146,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     return (
         <div className="flex flex-col w-full min-h-screen">
             {/* Playlist Header */}
-            <div className={`${gradient} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
+            <div className={`${gradient} ${darkGradient} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
                 <div className="w-40 h-40 md:w-48 md:h-48 bg-neutral-800 shadow-lg rounded-lg overflow-hidden flex-shrink-0">
                     {tracks.length > 0 ? (
                         <Image

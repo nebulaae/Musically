@@ -99,7 +99,7 @@ export const PlaylistActions = ({ trackId }: PlaylistProps) => {
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Отмена
               </Button>
-              <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800 hover:bg-purple-300">
+              <Button type="submit" disabled={!newPlaylistName.trim()} className="purple-accent">
                 Создать
               </Button>
             </DialogFooter>

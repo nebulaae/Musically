@@ -48,7 +48,7 @@ export const Bottombar = () => {
     ]
 
     return (
-        <nav className="fixed bottom-0 p-4 xs:px-7 md:hidden z-10 w-full bg-sidebar glassmorphism border-t-[1px] bg-neutral-300" >
+        <nav className="fixed bottom-0 p-4 xs:px-7 md:hidden z-10 w-full bg-sidebar glassmorphism border-t-[1px]" >
             <div className="flex items-center justify-between gap-2 xs:gap-4">
                 {links.map((link) => {
                     return (
@@ -57,7 +57,7 @@ export const Bottombar = () => {
                             key={link.id}
                             className={`relative flex flex-col items-center gap-2 rounded-lg p-2 sm:flex-1 sm:px-2 sm:py-2.5 ${
                                 pathname === link.url
-                                    ? "text-purple-800 mb-2 before:absolute before:-bottom-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800"
+                                    ? "purple-text mb-2 before:absolute before:-bottom-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800"
                                     : ""}`}
                         >
                             {link.icon}

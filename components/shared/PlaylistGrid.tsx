@@ -48,7 +48,7 @@ export const PlaylistGrid = () => {
             <div className="flex items-center justify-between mb-6">
                 <Button
                     onClick={() => setIsCreateDialogOpen(true)}
-                    className="flex items-center gap-2 bg-purple-200/50 text-purple-800 hover:bg-purple-300"
+                    className="flex items-center gap-2 purple-accent"
                 >
                     <PlusCircle className="h-4 w-4" />
                     <span>Новый плейлист</span>
@@ -56,11 +56,11 @@ export const PlaylistGrid = () => {
             </div>
 
             {playlists.length === 0 ? (
-                <div className="text-center py-8 bg-neutral-100 rounded-xl p-8">
+                <div className="text-center py-8 bg-secondary rounded-xl p-8">
                     <p className="text-neutral-500 mb-4">У вас пока нет плейлистов.</p>
                     <Button
                         onClick={() => setIsCreateDialogOpen(true)}
-                        className="bg-purple-200/50 text-purple-800 hover:bg-purple-300"
+                        className="purple-accent"
                     >
                         Создайте свой первый плейлист
                     </Button>
