@@ -134,6 +134,7 @@
 
   body {
     @apply bg-neutral-50 text-foreground dark:bg-neutral-800;
+    background: radial-gradient(circle, rgba(255, 235, 249, 1) 0%, rgba(228, 241, 255, 1) 100%);
   }
 }
 
@@ -153,6 +154,10 @@
   .purple-text {
     @apply !text-purple-800 dark:!text-purple-400;
   }
+
+  .purple-text-hover {
+    @apply hover:!text-purple-800 dark:hover:!text-purple-400 transition ease-in-out duration-200 cursor-pointer;
+  }
 }
 
 @layer utilities {
@@ -161,11 +166,15 @@
   }
 
   .glassmorphism {
-    @apply bg-neutral-50/50 dark:bg-neutral-900/50 backdrop-blur-[28px] border border-neutral-200 dark:border-[#303030];
+    @apply bg-neutral-100/50 dark:bg-neutral-900/50 backdrop-blur-[28px] border border-neutral-200 dark:border-[#303030];
   }
 
   .title-text {
     @apply text-2xl font-bold;
+  }
+
+  .subtitle-text {
+    @apply text-sm sm:text-base text-gray-500;
   }
 
   .border-style {

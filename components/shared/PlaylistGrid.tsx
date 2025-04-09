@@ -56,7 +56,7 @@ export const PlaylistGrid = () => {
             </div>
 
             {playlists.length === 0 ? (
-                <div className="text-center py-8 bg-secondary rounded-xl p-8">
+                <div className="text-center py-8 glassmorphism border-none rounded-xl p-8">
                     <p className="text-neutral-500 mb-4">У вас пока нет плейлистов.</p>
                     <Button
                         onClick={() => setIsCreateDialogOpen(true)}
@@ -96,7 +96,7 @@ export const PlaylistGrid = () => {
                             <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                                 Отмена
                             </Button>
-                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800 hover:bg-purple-300">
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="purple-accent">
                                 Создать
                             </Button>
                         </DialogFooter>

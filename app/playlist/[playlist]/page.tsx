@@ -53,9 +53,9 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const generateDarkGradient = () => {
         const gradients: string[] = [
             'bg-gradient-to-r from-slate-900 to-slate-700',
-            'bg-gradient-to-r from-slate-500 to-slate-800',
+            'bg-gradient-to-r from-slate-700 to-slate-900',
             'bg-gradient-to-r from-blue-800 to-indigo-900',
-            'bg-gradient-to-r from-violet-800 to-indigo-700',
+            'bg-gradient-to-r from-violet-900 to-indigo-900',
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
@@ -68,7 +68,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
             try {
                 setIsLoading(true);
                 const data = await getPlaylistById(playlistId);
-                if (!gradient) {
+                if (!gradient && theme == 'light') {
                     setGradient(generateGradient())
                 }
                 if (!darkGradient && theme == 'dark') {
@@ -144,7 +144,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     });
 
     return (
-        <div className="flex flex-col w-full min-h-screen">
+        <div className="flex flex-col w-full min-h-screen pb-42">
             {/* Playlist Header */}
             <div className={`${gradient} ${darkGradient} p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 text-white`}>
                 <div className="w-40 h-40 md:w-48 md:h-48 bg-neutral-800 shadow-lg rounded-lg overflow-hidden flex-shrink-0">
@@ -177,37 +177,39 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                 </div>
             </div>
 
-            {/* Playlist Controls */}
-            <div className="py-4 px-6 md:px-8 flex items-start gap-4">
-                <Button
-                    onClick={handlePlayPauseClick}
-                    className={`rounded-full size-18 flex items-center justify-center ${isPlaylistPlaying() ? 'bg-purple-300' : 'bg-purple-300'} hover:bg-purple-400 text-white`}
-                    disabled={tracks.length === 0}
-                >
-                    {isPlaylistPlaying() ? (
-                        <PauseIcon className="size-8 fill-purple-800 text-purple-800" strokeWidth={1} />
-                    ) : (
-                        <Play className="size-8 fill-purple-800 text-purple-800" strokeWidth={1} />
-                    )}
-                </Button>
-            </div>
+            <div className="dark:bg-gradient-to-b dark:from-neutral-700 dark:to-neutral-800">
+                {/* Playlist Controls */}
+                <div className="py-4 px-6 md:px-8 flex items-start gap-4">
+                    <Button
+                        onClick={handlePlayPauseClick}
+                        className={`rounded-full size-18 flex items-center justify-center ${isPlaylistPlaying() ? 'bg-purple-300' : 'bg-purple-300'} hover:bg-purple-400 text-white`}
+                        disabled={tracks.length === 0}
+                    >
+                        {isPlaylistPlaying() ? (
+                            <PauseIcon className="size-8 fill-purple-800 text-purple-800" strokeWidth={1} />
+                        ) : (
+                            <Play className="size-8 fill-purple-800 text-purple-800" strokeWidth={1} />
+                        )}
+                    </Button>
+                </div>
 
-            {/* Tracks List */}
-            <div className="px-6 md:px-8 pb-6">
-                {tracks.length > 0 ? (
-                    <FetchTracks
-                        tracks={tracks}
-                        isLoading={false}
-                        error={null}
-                        handleTrackSelect={handleTrackSelect}
-                        layout="list"
-                    />
-                ) : (
-                    <div className="text-center py-8 bg-neutral-100 rounded-xl p-8">
-                        <p className="text-neutral-500 mb-4">Этот плейлист пустой.</p>
-                        <p className="text-sm text-neutral-400">Добавьте песни через три точки и нажмите в "Добавить в плейлист".</p>
-                    </div>
-                )}
+                {/* Tracks List */}
+                <div className="px-6 md:px-8 pb-6">
+                    {tracks.length > 0 ? (
+                        <FetchTracks
+                            tracks={tracks}
+                            isLoading={false}
+                            error={null}
+                            handleTrackSelect={handleTrackSelect}
+                            layout="list"
+                        />
+                    ) : (
+                        <div className="text-center py-8 glassmorphism rounded-xl p-8">
+                            <p className="text-neutral-500 mb-4">Этот плейлист пустой.</p>
+                            <p className="text-sm text-neutral-400">Добавьте песни через три точки и нажмите в "Добавить в плейлист".</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

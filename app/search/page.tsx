@@ -38,7 +38,7 @@ const SearchPage = () => {
 
     return (
         <section className="flex flex-col items-center w-full px-4 pb-36">
-            <h1 className="mt-18 text-3xl sm:text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+            <h1 className="mt-18 text-3xl sm:text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 dark:bg-gradient-to-r dark:from-teal-200 dark:to-teal-500  bg-clip-text text-transparent mb-6">
                 Ищите песни
             </h1>
             <div className="flex flex-col mt-6 w-full max-w-[600px] mb-8 relative">
@@ -46,7 +46,7 @@ const SearchPage = () => {
                     type="text"
                     placeholder="Поиск песен..."
                     className={`
-                        rounded-full py-6 w-full pl-12 pr-12 
+                        rounded-full py-6 w-full pl-12 pr-12 border dark:border-neutral-700
                         ${isFocused ? 'bg-purple shadow-2xl shadow-purple-500/50' : ''}
                     `}
                     onChange={handleSearchChange}

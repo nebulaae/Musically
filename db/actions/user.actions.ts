@@ -5,26 +5,66 @@ import { User, Playlist } from '../models/user.model';
 import { Track } from '../models/tracks.model';
 import { getTracksByIds } from './tracks.actions';
 
+// Constants
+const DEFAULT_USER_ID = 'default-user-id';
+
 // Get the current user (create one if it doesn't exist)
 export async function getCurrentUser(): Promise<User> {
-    const users = await db.users.toArray();
-
-    if (users.length === 0) {
+    try {
+        // First check if any users exist
+        const userCount = await db.users.count();
+        
+        if (userCount > 0) {
+            // If users exist, get the first one
+            const users = await db.users.toArray();
+            return users[0];
+        }
+        
         // Create a default user if none exists
         const newUser: User = {
-            id: uuidv4(),
+            id: DEFAULT_USER_ID,
             name: 'User',
             likedSongs: [],
             playlists: [],
             onboarding: true
         };
-
-        await db.users.add(newUser);
+        
+        try {
+            await db.users.add(newUser);
+        } catch (err) {
+            // If there's a constraint error, clear the table and try again
+            if (err instanceof Error && err.name === 'ConstraintError') {
+                console.warn('Constraint error encountered, clearing users table');
+                await db.users.clear();
+                await db.users.add(newUser);
+            } else {
+                console.log(err );
+            }
+        }
+        
         return newUser;
+    } catch (error) {
+        console.error('Error in getCurrentUser:', error);
+        
+        // If we still have issues, let's try one more recovery approach
+        try {
+            await db.users.clear();
+            
+            const recoveryUser: User = {
+                id: `recovery-user-${Date.now()}`, // Use timestamp for uniqueness
+                name: 'User',
+                likedSongs: [],
+                playlists: [],
+                onboarding: true
+            };
+            
+            await db.users.add(recoveryUser);
+            return recoveryUser;
+        } catch (recoveryError) {
+            console.error('Recovery attempt failed:', recoveryError);
+            throw error; // Throw the original error
+        }
     }
-
-    // Return the first user (we're only supporting one user in this simple app)
-    return users[0];
 }
 
 // Update user name and complete onboarding
@@ -34,7 +74,7 @@ export async function completeOnboarding(name: string): Promise<User> {
     const updatedUser: User = {
         ...user,
         name,
-        onboarding: true
+        onboarding: false // Changed from true to false
     };
 
     await db.users.update(user.id, {
@@ -47,7 +87,7 @@ export async function completeOnboarding(name: string): Promise<User> {
 // Check if user has completed onboarding
 export async function hasCompletedOnboarding(): Promise<boolean> {
     const user = await getCurrentUser();
-    return user.onboarding;
+    return !user.onboarding; // Return !onboarding since onboarding=true means it has NOT completed
 }
 
 // Add a track to liked songs

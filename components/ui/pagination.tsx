@@ -58,7 +58,7 @@ function PaginationLink({
           variant: isActive ? "outline" : "ghost",
           size,
         }),
-        isActive ? "bg-purple-200/50 text-purple-800" : "",
+        isActive ? "purple-accent" : "",
         className
       )}
       {...props}

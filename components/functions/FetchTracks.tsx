@@ -19,8 +19,8 @@ import { PlaylistActions } from './PlaylistActions';
 import { useAudio } from '@/components/player/AudioContext';
 import {
   memo,
-  useCallback,
   useEffect,
+  useCallback,
 } from 'react';
 
 interface TrackItemProps {
@@ -52,8 +52,10 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
           width={200}
           height={200}
           className="rounded-lg w-full object-cover"
-          // Add priority loading for visible tracks
           priority={index < 4}
+          loading={index < 8 ? "eager" : "lazy"}
+          placeholder="blur"
+          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFeAJ5gMtG4AAAAABJRU5ErkJggg=="
         />
 
         {isPlaying && (
@@ -304,7 +306,7 @@ export const FetchTracks = memo(({
     );
   }
 
-  // Render list layout
+  // Render List layout
   return (
     <div className="flex flex-col w-full">
       <div className="bg-sidebar glassmorphism w-full border-style rounded-xl divide-y">

@@ -49,12 +49,12 @@ const links = [
         url: "/favorite",
         icon: <Heart />,
     },
-    {
+    /*{
         id: 5,
         title: "Настройки",
         url: "/settings",
         icon: <Settings />,
-    },
+    },*/
 ]
 
 export const AppSidebar = () => {

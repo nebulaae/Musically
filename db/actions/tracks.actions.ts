@@ -4,7 +4,7 @@ import { Track } from '../models/tracks.model';
 export async function syncTracksFromAPI(): Promise<Track[]> {
     try {
         // Fetch tracks from the API
-        const response = await fetch('/api/tracks?limit=1000'); // Get a large limit to fetch all tracks at once
+        const response = await fetch('/api/tracks?limit=100000'); // Get a large limit to fetch all tracks at once
         if (!response.ok) {
             throw new Error(`Failed to fetch tracks: ${response.status}`);
         }
