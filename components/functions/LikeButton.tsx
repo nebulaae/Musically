@@ -2,7 +2,7 @@
 
 import { Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { isSongLiked, likeSong, unlikeSong } from '@/db/actions/user.actions';
+import { isSongLiked, likeSong, unlikeSong } from '@/db/actions/user';
 
 interface LikeButtonProps {
     trackId: string;

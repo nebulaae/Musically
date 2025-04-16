@@ -1,6 +1,6 @@
 "use client";
 
-import { Track } from "@/db/models/tracks.model";
+import { Track } from "@/db/models/tracks";
 import { useAudio } from "@/components/player/AudioContext";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 

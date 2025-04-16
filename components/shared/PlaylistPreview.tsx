@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import { useState } from 'react';
-import { Playlist } from '@/db/models/user.model';
+import { Playlist } from '@/db/models/user';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { Music, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 

@@ -1,5 +1,5 @@
 import db from '../index';
-import { Track } from '../models/tracks.model';
+import { Track } from '../models/tracks';
 
 export async function syncTracksFromAPI(): Promise<Track[]> {
     try {

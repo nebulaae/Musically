@@ -15,6 +15,7 @@ import {
   PaginationPrevious
 } from "@/components/ui/pagination";
 
+import { Track } from '@/db/models/tracks';
 import { PlaylistActions } from './PlaylistActions';
 import { useAudio } from '@/components/player/AudioContext';
 import {

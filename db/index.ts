@@ -1,6 +1,6 @@
 import Dexie, { Table } from 'dexie';
-import { Track } from './models/tracks.model';
-import { User } from './models/user.model';
+import { Track } from './models/tracks';
+import { User } from './models/user';
 
 export class Database extends Dexie {
     tracks!: Table<Track>;
@@ -10,7 +10,7 @@ export class Database extends Dexie {
         super('Database');
         this.version(1).stores({
             tracks: 'id, title, author, album, src, cover, type',
-            users: 'id, name, onboarding',
+            users: 'id, name',
         });
     }
 }

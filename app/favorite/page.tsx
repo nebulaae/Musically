@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { User } from "@/db/models/user.model";
-import { Track } from "@/db/models/tracks.model";
-import { getCurrentUser, getLikedSongs } from "@/db/actions/user.actions";
+import { User } from "@/db/models/user";
+import { Track } from "@/db/models/tracks";
+import { getCurrentUser, getLikedSongs } from "@/db/actions/user";
 
 import { useAudio } from "@/components/player/AudioContext";
 import { FetchTracks } from "@/components/functions/FetchTracks";

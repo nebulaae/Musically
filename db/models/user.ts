@@ -3,7 +3,6 @@ export interface User {
     name: string;
     likedSongs: string[]; // Array of track IDs
     playlists: Playlist[];
-    onboarding: boolean;
 }
 
 export interface Playlist {

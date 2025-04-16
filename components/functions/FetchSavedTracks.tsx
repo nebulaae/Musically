@@ -4,6 +4,7 @@ import Image from 'next/image';
 
 import { Skeleton } from '../ui/skeleton';
 import { Play, Pause } from 'lucide-react';
+import { Track } from '@/db/models/tracks';
 import { SoundWave } from '../ui/magic/SoundWave';
 import { PlaylistActions } from './PlaylistActions';
 import { LikeButton } from '@/components/functions/LikeButton';

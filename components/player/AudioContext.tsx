@@ -1,6 +1,14 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    useCallback,
+    useMemo,
+    useRef
+} from 'react';
 
 interface Track {
     id: string;
