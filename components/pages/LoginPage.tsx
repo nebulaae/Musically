@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterFormValues, formSchema } from "@/lib/validation";
+import { LoginFormValues, loginSchema } from "@/lib/validation";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,26 +24,26 @@ export const LoginPage = () => {
     // ROUTER
     const router = useRouter();
     // FORM HOOK INITIALIZATION
-    const form = useForm<RegisterFormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<LoginFormValues>({
+        resolver: zodResolver(loginSchema),
         defaultValues: {
             username: "",
-            email: "",
             password: ""
         },
     });
 
     // FORM HANDLER
     // This function will be called when the form is submitted successfully (passes validation).
-    const onSubmit = async (values: RegisterFormValues) => {
+    const onSubmit = async (values: LoginFormValues) => {
         try {
-            const response = await fetch('/api/auth', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values)
             });
             const data = await response.json();
-
+            
+            // TODO MAKE A TOAST
             if (response.ok) {
                 console.log("Успешно зарегистрирован", data);
                 router.push("/")
@@ -79,21 +79,6 @@ export const LoginPage = () => {
                                 <Input placeholder="Иван Иванович..." {...field} className="purple-input" />
                             </FormControl>
                             {/* Displays validation errors for this field */}
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                {/* EMAIL FIELD */}
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Электронная почта</FormLabel>
-                            <FormControl>
-                                <Input type="email" placeholder="name@example.com" {...field} className="purple-input" />
-                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}

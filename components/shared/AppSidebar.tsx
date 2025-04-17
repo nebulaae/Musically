@@ -10,6 +10,7 @@ import {
     PanelRightClose,
     PanelRightOpen,
     Settings,
+    UserRound,
 } from "lucide-react";
 
 import {
@@ -54,7 +55,13 @@ const links = [
         title: "Настройки",
         url: "/settings",
         icon: <Settings />,
-    },*/
+    },*/,
+    {
+        id: 5,
+        title: "Профиль",
+        url: "/profile",
+        icon: <UserRound />,
+    },
 ]
 
 export const AppSidebar = () => {
@@ -67,16 +74,16 @@ export const AppSidebar = () => {
                     <SidebarGroupContent>
                         <SidebarMenu className="mt-14">
                             {links.map((link) => {
-                                const isActive = pathname === link.url;
+                                const isActive = pathname === link!.url;
                                 return (
-                                    <SidebarMenuItem key={link.id}>
+                                    <SidebarMenuItem key={link!.id}>
                                         <SidebarMenuButton asChild>
                                             <Link
-                                                href={link.url}
+                                                href={link!.url}
                                                 className={`flex flex-row items-center px-4 ${isActive ? 'before:absolute before:-left-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800 dark:before:bg-purple-400' : ''}`}
                                             >
-                                                <div className={`flex items-center justify-center size-8 ${isActive ? 'purple-text' : ''}`}>{link.icon}</div>
-                                                <span className={`text-[18px] ${isActive ? 'purple-text' : ''}`}>{link.title}</span>
+                                                <div className={`flex items-center justify-center size-8 ${isActive ? 'purple-text' : ''}`}>{link!.icon}</div>
+                                                <span className={`text-[18px] ${isActive ? 'purple-text' : ''}`}>{link!.title}</span>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>

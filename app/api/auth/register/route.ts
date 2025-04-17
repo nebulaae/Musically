@@ -1,12 +1,6 @@
 import { cookies } from "next/headers";
+import { registerSchema } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-
-const registerSchema = z.object({
-    username: z.string().min(3).max(50),
-    email: z.string().email(),
-    password: z.string().min(8).max(50),
-});
 
 export async function POST(req: NextRequest) {
     const body = await req.json();
@@ -17,7 +11,8 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const res = await fetch(`https://${process.env.NEXT_PUBLIC_BACKEND_API}/api/auth/register`,
+        const res = await fetch(
+            `https://${process.env.NEXT_PUBLIC_BACKEND_API}/api/auth/register`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -28,21 +23,20 @@ export async function POST(req: NextRequest) {
         const data = await res.json();
 
         if (!res.ok) {
-            return NextResponse.json({ error: data }, { status: res.status });
+            return NextResponse.json({ error: data.message }, { status: res.status });
         }
 
-        // Set cookie (or token if backend returns it)
+        // Set cookie with token from backend response
         (await
-            // Set cookie (or token if backend returns it)
-            cookies()).set("user", JSON.stringify({
-            username: data.username,
-            email: data.email,
-        }), {
+            // Set cookie with token from backend response
+            cookies()).set("token", data.token, {
             httpOnly: true,
             path: "/",
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 365 * 24 * 60 * 60, // 365 days
         });
 
-        return NextResponse.json({ message: "Registered successfully", user: data });
+        return NextResponse.json({ message: "Registered successfully", user: data.user });
     } catch (err) {
         console.error("Registration error:", err);
         return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

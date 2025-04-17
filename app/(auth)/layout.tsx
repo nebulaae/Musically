@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Ayfaar Radio",
-    description: "Music player as spotify, but with author's favorite music.",
+    title: "Auth Page",
+    description: "Page that everyone hates.",
 };
 
 export default async function RootLayout({

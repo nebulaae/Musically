@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RegisterFormValues, formSchema } from "@/lib/validation";
+import { RegisterFormValues, registerSchema } from "@/lib/validation";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export const RegisterPage = () => {
     const router = useRouter();
     // FORM HOOK INITIALIZATION
     const form = useForm<RegisterFormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(registerSchema),
         defaultValues: {
             username: "",
             email: "",
@@ -37,13 +37,14 @@ export const RegisterPage = () => {
     // This function will be called when the form is submitted successfully (passes validation).
     const onSubmit = async (values: RegisterFormValues) => {
         try {
-            const response = await fetch('/api/auth', {
+            const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values)
             });
             const data = await response.json();
 
+            // TODO MAKE A TOAST
             if (response.ok) {
                 console.log("Успешно зарегистрирован", data);
                 router.push("/")

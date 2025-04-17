@@ -1,14 +1,8 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import BottomPlayer from "@/components/player/BottomPlayer";
-
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { Bottombar } from "@/components/shared/Bottombar";
 import { Initialize } from "@/components/functions/Initialize";
 import { ThemeProviders } from "./providers/ThemeProviders";
-import { AudioProvider } from "@/components/player/AudioContext";
-import { AppSidebar, Trigger } from "@/components/shared/AppSidebar";
 
 import "./globals.css";
 
@@ -39,17 +33,9 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProviders>
-          <SidebarProvider>
-            <AudioProvider>
-              <Initialize>
-                <AppSidebar />
-                <Trigger />
-                {children}
-                <BottomPlayer />
-                <Bottombar />
-              </Initialize>
-            </AudioProvider>
-          </SidebarProvider>
+          <Initialize>
+            {children}
+          </Initialize>
         </ThemeProviders>
       </body>
     </html>

@@ -206,13 +206,6 @@ const BottomPlayer = () => {
                             : 'flex-col md:flex-row items-center justify-between gap-4' // Original collapsed layout
                         }`}
                 >
-                    {/* Drag handle indicator (only when collapsed) */}
-                    {!isExpanded && (
-                        <div className="w-full flex md:hidden justify-center items-center mb-2 cursor-grab pt-1">
-                            <div className="w-12 h-1 bg-gray-300 rounded-full" />
-                        </div>
-                    )}
-
                     {/* Minimize Button (Expanded Only) */}
                     {isExpanded && (
                         <div className="absolute top-4 right-4 z-20"> {/* Position absolute for easy placement */}

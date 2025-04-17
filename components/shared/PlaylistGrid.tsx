@@ -56,7 +56,7 @@ export const PlaylistGrid = () => {
             </div>
 
             {playlists.length === 0 ? (
-                <div className="text-center py-8 glassmorphism border-none rounded-xl p-8">
+                <div className="text-center glassmorphism border-none rounded-xl py-8 px-2">
                     <p className="text-neutral-500 mb-4">У вас пока нет плейлистов.</p>
                     <Button
                         onClick={() => setIsCreateDialogOpen(true)}
