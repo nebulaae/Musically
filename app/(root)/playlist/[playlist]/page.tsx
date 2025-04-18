@@ -54,8 +54,8 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
         const gradients: string[] = [
             'bg-gradient-to-r from-slate-900 to-slate-700',
             'bg-gradient-to-r from-slate-700 to-slate-900',
-            'bg-gradient-to-r from-blue-800 to-indigo-900',
-            'bg-gradient-to-r from-violet-900 to-indigo-900',
+            'bg-gradient-to-r from-blue-900 to-indigo-950',
+            'bg-gradient-to-r from-violet-950 to-indigo-950',
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
@@ -177,7 +177,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                 </div>
             </div>
 
-            <div className="dark:bg-gradient-to-b dark:from-neutral-700 dark:to-neutral-800">
+            <div className="dark:bg-gradient-to-b dark:from-neutral-700/20 dark:to-neutral-800/20">
                 {/* Playlist Controls */}
                 <div className="py-4 px-6 md:px-8 flex items-start gap-4">
                     <Button

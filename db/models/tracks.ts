@@ -6,4 +6,6 @@ export interface Track {
     src: string;
     cover?: string;
     type?: string;
-}
+    createdAt?: Date;
+    updatedAt?: Date;
+  }

@@ -6,6 +6,7 @@ import { Settings, UserRound } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { PlaylistGrid } from '@/components/shared/PlaylistGrid';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
 
 interface User {
     username: string;
@@ -35,7 +36,7 @@ const Page = () => {
                 setUser(data.user);
             } catch (err) {
                 console.error('Error fetching current user:', err);
-                setError('Failed to fetch user');
+                setError('Failed to fetch tracks');
             } finally {
                 setLoading(false);
             }
@@ -44,6 +45,7 @@ const Page = () => {
         getMe();
     }, []);
 
+    // TODO MAKE NORMAL FETCHING
     if (loading) return <div>Loading...</div>;
     if (error) return <div>Error: {error}</div>;
     if (!user) return <div>Not authenticated</div>;
@@ -96,7 +98,7 @@ const Page = () => {
                         <TabsTrigger value="playlists">Плейлисты</TabsTrigger>
                     </TabsList>
                     <TabsContent value="favorite">
-                        <h1>aaa</h1>
+                        <GetLikedSongs />
                     </TabsContent>
                     <TabsContent value="playlists">
                         <PlaylistGrid />

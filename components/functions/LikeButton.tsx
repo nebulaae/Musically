@@ -69,12 +69,12 @@ export const LikeButton = ({ trackId, size = 'md', className = '', onLikeStateCh
         <button
             onClick={toggleLike}
             disabled={isLoading}
-            className={`transition-all duration-200 ${className}`}
+            className={`transition-all duration-200 cursor-pointer ${className}`}
             aria-label={isLiked ? "Unlike" : "Like"}
             title={isLiked ? "Unlike" : "Like"}
         >
             <Heart
-                className={`${sizeClass} ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500 hover:text-gray-700'} ${isLoading ? 'opacity-50' : ''}`}
+                className={`${sizeClass} ${isLiked ? 'fill-red-500 text-red-500' : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'} ${isLoading ? 'opacity-50' : ''}`}
             />
         </button>
     );

@@ -32,6 +32,7 @@ import {
     useTransform,
     AnimatePresence
 } from 'framer-motion';
+import { getProxiedImageUrl } from '@/lib/utils';
 
 const BottomPlayer = () => {
     const {
@@ -164,6 +165,9 @@ const BottomPlayer = () => {
         return null;
     }
 
+    // Proxied image for track details
+    const coverSrc = getProxiedImageUrl(currentTrack?.cover || '/default-cover.jpg');
+
     return (
         <AnimatePresence>
             <motion.footer
@@ -233,7 +237,7 @@ const BottomPlayer = () => {
                         onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
                     >
                         <Image
-                            src={currentTrack?.cover || '/default-cover.jpg'}
+                            src={coverSrc}
                             alt="Track Cover"
                             width={isExpanded ? 250 : 48} // Adjusted expanded size slightly
                             height={isExpanded ? 250 : 48}

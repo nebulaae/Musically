@@ -27,7 +27,7 @@ export const LoginPage = () => {
     const form = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
-            username: "",
+            usernameOrEmail: "",
             password: ""
         },
     });
@@ -71,12 +71,12 @@ export const LoginPage = () => {
                 {/* USERNAME FIELD */}
                 <FormField
                     control={form.control} // Connects to react-hook-form state
-                    name="username"
+                    name="usernameOrEmail"
                     render={({ field }) => ( // `field` contains value, onChange, onBlur, etc.
                         <FormItem>
-                            <FormLabel>Имя пользователя</FormLabel>
+                            <FormLabel>Имя пользователя или электронная почта</FormLabel>
                             <FormControl>
-                                <Input placeholder="Иван Иванович..." {...field} className="purple-input" />
+                                <Input placeholder="Иван или name@example.com..." {...field} className="purple-input" />
                             </FormControl>
                             {/* Displays validation errors for this field */}
                             <FormMessage />

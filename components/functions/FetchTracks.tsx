@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/pagination";
 
 import { Track } from '@/db/models/tracks';
+import { getProxiedImageUrl } from '@/lib/utils';
 import { PlaylistActions } from './PlaylistActions';
 import { useAudio } from '@/components/player/AudioContext';
 import {
@@ -33,22 +34,18 @@ interface TrackItemProps {
 
 // Memoized TrackItem component to prevent unnecessary re-renders
 const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackItemProps) => {
-  // Use useCallback for event handlers to maintain referential equality
   const handleClick = useCallback(() => {
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
-  // Rest of TrackItem component stays the same
+  // Use the proxied image URL
+  const coverSrc = getProxiedImageUrl(track.cover || '/default-cover.jpg');
+
   return (
-    <div
-      className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]"
-    >
-      <div
-        className="relative w-full"
-        onClick={handleClick}
-      >
+    <div className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]">
+      <div className="relative w-full" onClick={handleClick}>
         <Image
-          src={track.cover || '/default-cover.jpg'}
+          src={coverSrc}
           alt={track.title}
           width={200}
           height={200}
@@ -99,18 +96,15 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
-  // Rest of the ListTrackItem remains the same
+  // Use the proxied image URL
+  const coverSrc = getProxiedImageUrl(track.cover || '/default-cover.jpg');
+
   return (
-    <div
-      className={`flex items-center p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 dark:bg-neutral-700 rounded-xl' : ''}`}
-    >
-      <div
-        className="flex items-center flex-1 min-w-0"
-        onClick={handleClick}
-      >
+    <div className={`flex items-center p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 dark:bg-neutral-700 rounded-xl' : ''}`}>
+      <div className="flex items-center flex-1 min-w-0" onClick={handleClick}>
         <div className="relative flex-shrink-0 w-12 h-12 mr-3">
           <Image
-            src={track.cover || '/default-cover.jpg'}
+            src={coverSrc}
             alt={track.title}
             width={48}
             height={48}

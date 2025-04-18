@@ -23,7 +23,11 @@ export const useSearch = () => {
         const fetchAllTracks = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch('/api/tracks?limit=1000'); // You can vary the limit to fetch for search page
+                // You can vary the tracks limit
+                const response = await fetch(`https://${process.env.NEXT_PUBLIC_BACKEND_API}/api/tracks?limit=10000`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
 
                 if (!response.ok) {
                     throw new Error(`Ошибка при загрузке песен: ${response.status} ${response.statusText}`);

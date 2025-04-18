@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useTracks } from "@/hooks/useTracks";
@@ -12,7 +11,7 @@ const Page = () => {
     }));
 
     const someCollection = useTracks(({
-        trackNames: ["POLO G - MARTIN AND GINA.mp3", "TEASING_REF.mp3"],
+        trackNames: ["b6515acab120c14ac074256bcb47452c"],
         page: 1,
         limit: 10 // если не хотите пагинацию увеличьте лимит
         // лимит это кол-во песен на одну страницу
