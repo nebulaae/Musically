@@ -46,8 +46,14 @@ const Page = () => {
     }, []);
 
     // TODO MAKE NORMAL FETCHING
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+    if (loading) {
+        return (
+            <div>Loading...</div>
+        )
+    };
+
+    if (error) return <div className="flex items-center justify-center w-full text-red-500">Ошибка: {error}</div>;
+
     if (!user) return <div>Not authenticated</div>;
 
 

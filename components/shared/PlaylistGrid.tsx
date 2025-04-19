@@ -15,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from '../ui/skeleton';
 
 export const PlaylistGrid = () => {
     const { playlists, isLoading, createNewPlaylist, refreshPlaylists } = usePlaylist();
@@ -40,7 +41,12 @@ export const PlaylistGrid = () => {
     };
 
     if (isLoading) {
-        return <div className="text-center py-8">Загрузка плейлистов...</div>;
+        return (
+            <div className="flex flex-col items-start justify-center mt-1">
+                <Skeleton className="w-48 h-8" />
+                <Skeleton className="w-full h-48 mt-4" />
+            </div>
+        );
     }
 
     return (

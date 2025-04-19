@@ -34,12 +34,6 @@ export const Bottombar = () => {
             url: "/playlist",
             icon: <LibraryBig />,
         },
-        {
-            id: 4,
-            title: "Понравившиеся",
-            url: "/favorite",
-            icon: <Heart />,
-        },
         /*{
             id: 5,
             title: "Настройки",
@@ -47,7 +41,7 @@ export const Bottombar = () => {
             icon: <Settings />,
         },*/
         {
-            id: 5,
+            id: 4,
             title: "Профиль",
             url: "/profile",
             icon: <UserRound />,
@@ -62,8 +56,7 @@ export const Bottombar = () => {
                         <Link
                             href={link.url}
                             key={link.id}
-                            className={`relative flex flex-col items-center gap-2 rounded-lg p-2 sm:flex-1 sm:px-2 sm:py-2.5 ${
-                                pathname === link.url
+                            className={`relative flex flex-col items-center gap-2 rounded-lg p-2 sm:flex-1 sm:px-2 sm:py-2.5 ${pathname === link.url
                                     ? "purple-text mb-2 before:absolute before:-bottom-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800"
                                     : ""}`}
                         >

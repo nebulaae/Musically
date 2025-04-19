@@ -44,12 +44,6 @@ const links = [
         url: "/playlist",
         icon: <LibraryBig />,
     },
-    {
-        id: 4,
-        title: "Понравившиеся",
-        url: "/favorite",
-        icon: <Heart />,
-    },
     /*{
         id: 5,
         title: "Настройки",
@@ -57,7 +51,7 @@ const links = [
         icon: <Settings />,
     },*/,
     {
-        id: 5,
+        id: 4,
         title: "Профиль",
         url: "/profile",
         icon: <UserRound />,

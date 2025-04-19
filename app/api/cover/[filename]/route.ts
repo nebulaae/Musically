@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { filename: string } }
+    { params }: { params: { filename: string } },
 ) {
     try {
         const { filename } = await params;

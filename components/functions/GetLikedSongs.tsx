@@ -1,12 +1,16 @@
 "use client"
 
-import { Track } from "@/db/models/tracks";
+import { Track } from "@/server/models/track";
+import { FetchTracks } from "./FetchTracks";
 import { useState, useEffect } from "react";
+import { useAudio } from "../player/AudioContext";
 
 export const GetLikedSongs = () => {
     const [likedTracks, setLikedTracks] = useState<Track[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState("");
+
+    const { playTrackAtIndex } = useAudio();
 
     useEffect(() => {
         const getLikedSongs = async () => {
@@ -27,29 +31,24 @@ export const GetLikedSongs = () => {
                 console.error('Error fetching liked songs:', err);
                 setError(err.message || 'Failed to fetch liked songs');
             } finally {
-                setLoading(false);
+                setIsLoading(false);
             }
         };
 
         getLikedSongs();
     }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
-    if (likedTracks.length === 0) return <div>No liked songs found</div>;
+    const handleTrackSelect = (index: number) => {
+        playTrackAtIndex(index, likedTracks);
+    };
 
     return (
-        <section>
-            <h2>Your Liked Songs</h2>
-            <ul className="space-y-2 mt-4">
-                {likedTracks.map(track => (
-                    <li key={track.id} className="p-3 bg-secondary rounded-lg">
-                        <div className="font-medium">{track.title}</div>
-                        <div className="text-sm">By: {track.author}</div>
-                        {track.album && <div className="text-sm">Album: {track.album}</div>}
-                    </li>
-                ))}
-            </ul>
-        </section>
+        <FetchTracks
+            tracks={likedTracks}
+            isLoading={isLoading}
+            error={error}
+            handleTrackSelect={handleTrackSelect}
+            layout="list"
+        />
     );
 };

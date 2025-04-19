@@ -7,8 +7,8 @@ import {
     removeTrackFromPlaylist,
     deletePlaylist,
     renamePlaylist as renamePlaylistDb,
-} from '@/db/actions/user';
-import { Playlist } from '@/db/models/user';
+} from '@/server/actions/playlist';
+import { Playlist } from '@/server/models/playlist';
 
 export const usePlaylist = (trackId?: string) => {
     const [playlists, setPlaylists] = useState<Playlist[]>([]);

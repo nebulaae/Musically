@@ -1,7 +1,7 @@
 "use client"
 
 import { useDebounce } from "./useDebounce";
-import { Track } from "@/db/models/tracks";
+import { Track } from "@/server/models/track";
 import { useAudio } from "@/components/player/AudioContext";
 import { useState, useEffect, useCallback, useMemo } from "react";
 

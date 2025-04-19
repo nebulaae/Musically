@@ -15,9 +15,8 @@ import {
   PaginationPrevious
 } from "@/components/ui/pagination";
 
-import { Track } from '@/db/models/tracks';
+import { Track } from '@/server/models/track';
 import { getProxiedImageUrl } from '@/lib/utils';
-import { PlaylistActions } from './PlaylistActions';
 import { useAudio } from '@/components/player/AudioContext';
 import {
   memo,
@@ -76,13 +75,6 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
           <h3 className="font-semibold">{track.title}</h3>
           <p className="text-sm text-gray-500">{track.author}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <LikeButton
-            trackId={track.id}
-            size="md"
-          />
-          <PlaylistActions trackId={track.id} />
-        </div>
       </div>
     </div>
   );
@@ -125,9 +117,9 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center pr-4">
         <LikeButton trackId={track.id} size="md" />
-        <PlaylistActions trackId={track.id} />
+        {/* <PlaylistActions trackId={track.id} /> */}
       </div>
     </div>
   );
