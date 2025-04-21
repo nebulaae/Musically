@@ -1,4 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { Playlist } from '@/server/models/playlist';
+import {
+    useState,
+    useEffect,
+    useCallback
+} from 'react';
 import {
     createPlaylist,
     addTrackToPlaylist,
@@ -8,7 +13,6 @@ import {
     deletePlaylist,
     renamePlaylist as renamePlaylistDb,
 } from '@/server/actions/playlist';
-import { Playlist } from '@/server/models/playlist';
 
 export const usePlaylist = (trackId?: string) => {
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -75,21 +79,10 @@ export const usePlaylist = (trackId?: string) => {
         }
     }, [trackId, fetchPlaylists]);
 
-    const removePlaylist = useCallback(async (playlistId: string) => {
-        try {
-            await deletePlaylist(playlistId);
-            await fetchPlaylists();
-            return true;
-        } catch (error) {
-            console.error('Error deleting playlist:', error);
-            return false;
-        }
-    }, [fetchPlaylists]);
-
-    // Then in the hook
     const renamePlaylist = useCallback(async (playlistId: string, newName: string) => {
         try {
-            await renamePlaylistDb(playlistId, newName); // Use the renamed import
+            await renamePlaylistDb(playlistId, newName);
+            // Refresh playlists to reflect the changes
             await fetchPlaylists();
             return true;
         } catch (error) {
@@ -98,6 +91,17 @@ export const usePlaylist = (trackId?: string) => {
         }
     }, [fetchPlaylists]);
 
+    const removePlaylist = useCallback(async (playlistId: string) => {
+        try {
+            await deletePlaylist(playlistId);
+            // Refresh playlists to reflect the changes
+            await fetchPlaylists();
+            return true;
+        } catch (error) {
+            console.error('Error deleting playlist:', error);
+            return false;
+        }
+    }, [fetchPlaylists]);
 
     const isTrackInPlaylist = useCallback((playlistId: string): boolean => {
         if (!trackId) return false;
@@ -121,8 +125,8 @@ export const usePlaylist = (trackId?: string) => {
         addToPlaylist,
         removeFromPlaylist,
         createNewPlaylist,
-        removePlaylist,
         renamePlaylist,
+        removePlaylist,
         isTrackInPlaylist,
         getPlaylistById,
         refreshPlaylists: fetchPlaylists

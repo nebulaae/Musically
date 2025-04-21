@@ -31,10 +31,26 @@ interface PlaylistPreviewProps {
 }
 
 export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) => {
-    const { removePlaylist, renamePlaylist, refreshPlaylists } = usePlaylist();
+    const { renamePlaylist, removePlaylist } = usePlaylist();
     const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [newPlaylistName, setNewPlaylistName] = useState(playlist.name);
+
+    const handleDeletePlaylist = async () => {
+        await removePlaylist(playlist.id);
+        setIsDeleteDialogOpen(false);
+    };
+
+    const handleRenamePlaylist = async (e: any) => {
+        e.preventDefault();
+        await renamePlaylist(playlist.id, newPlaylistName);
+        setIsRenameDialogOpen(false);
+    };
+
+    const handleMenuClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
     // Generate a random gradient for each playlist
     const generateGradient = () => {
@@ -51,26 +67,6 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
         // Use a hash of the playlist ID to ensure consistent colors for the same playlist
         const index = playlist.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
         return gradients[index];
-    };
-
-    const handleDeletePlaylist = async () => {
-        await removePlaylist(playlist.id);
-        
-        setIsDeleteDialogOpen(false);
-        refreshPlaylists();
-    };
-
-    const handleRenamePlaylist = async () => {
-        await renamePlaylist(playlist.id, newPlaylistName);
-
-        setIsRenameDialogOpen(false);
-        refreshPlaylists();
-    };
-
-    const handleMenuClick = (e: React.MouseEvent) => {
-        // Prevent click from triggering the Link navigation
-        e.preventDefault();
-        e.stopPropagation();
     };
 
     return (
@@ -96,20 +92,20 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleMenuClick}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full bg-white/50 glassmorphism focus-visible:ring-0">
+                        <Button variant="ghost" size="icon" className="rounded-full bg-main focus-visible:ring-0 cursor-pointer">
                             <EllipsisVertical className="h-5 w-5" />
                             <span className="sr-only">Действия с плейлистом</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 bg-white/60 glassmorphism">
                         <DropdownMenuItem onClick={() => setIsRenameDialogOpen(true)}>
-                            <Pencil className="size-4 mr-1 text-black" />
+                            <Pencil className="size-4 mr-1 text-white dark:text-black" />
                             <span>Переименовать</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-red-500">
+                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
                             <Trash2 className="size-4 mr-1 text-red-500" />
-                            <span>Удалить</span>
+                            <span className="text-red-500">Удалить</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -138,7 +134,7 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                             <Button type="button" variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
                                 Отмена
                             </Button>
-                            <Button type="submit" disabled={!newPlaylistName.trim()} className="bg-purple-200/50 text-purple-800 hover:bg-purple-300">
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="purple-button">
                                 Сохранить
                             </Button>
                         </DialogFooter>

@@ -1,15 +1,14 @@
-import { v4 as uuidv4 } from 'uuid';
 import { Track } from '../models/track';
 import { Playlist } from '../models/playlist';
 
 // Helper function to safely parse JSON responses
 async function safeJsonParse(response: Response) {
-  try {
-    return await response.json();
-  } catch (e) {
-    console.error("Failed to parse JSON response:", e);
-    return { error: "Invalid response from server" };
-  }
+    try {
+        return await response.json();
+    } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        return { error: "Invalid response from server" };
+    }
 }
 
 // Create a new playlist
@@ -24,7 +23,7 @@ export async function createPlaylist(name: string): Promise<Playlist> {
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to create playlist');
         }
@@ -48,9 +47,9 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string): P
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to add track to playlist');
+            throw new Error(`Failed to add track to playlist: ${data.error}, ${data.message}`);
         }
     } catch (error) {
         console.error("Add track to playlist error:", error);
@@ -70,7 +69,7 @@ export async function removeTrackFromPlaylist(playlistId: string, trackId: strin
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to remove track from playlist');
         }
@@ -92,7 +91,7 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to delete playlist');
         }
@@ -114,7 +113,7 @@ export async function renamePlaylist(playlistId: string, newName: string): Promi
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to rename playlist');
         }
@@ -139,7 +138,7 @@ export async function getPlaylistWithTracks(playlistId: string): Promise<{ playl
         }
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to get playlist');
         }
@@ -162,7 +161,7 @@ export async function getAllPlaylists(): Promise<Playlist[]> {
         });
 
         const data = await safeJsonParse(response);
-        
+
         if (!response.ok) {
             throw new Error(data.error || data.message || 'Failed to get playlists');
         }

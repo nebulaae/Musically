@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Playlist ID is required" }, { status: 400 });
         }
 
-        const res = await fetch(`https://${process.env.NEXT_PUBLIC_BACKEND_API}/api/playlists/`, {
+        const res = await fetch(`https://${process.env.NEXT_PUBLIC_BACKEND_API}/api/playlists/${playlistId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

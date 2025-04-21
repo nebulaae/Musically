@@ -23,6 +23,7 @@ import {
   useEffect,
   useCallback,
 } from 'react';
+import { PlaylistActions } from './PlaylistActions';
 
 interface TrackItemProps {
   track: Track;
@@ -119,7 +120,7 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Trac
 
       <div className="flex items-center pr-4">
         <LikeButton trackId={track.id} size="md" />
-        {/* <PlaylistActions trackId={track.id} /> */}
+        <PlaylistActions trackId={track.id} />
       </div>
     </div>
   );

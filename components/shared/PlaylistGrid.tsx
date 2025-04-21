@@ -102,7 +102,7 @@ export const PlaylistGrid = () => {
                             <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                                 Отмена
                             </Button>
-                            <Button type="submit" disabled={!newPlaylistName.trim()} className="purple-accent">
+                            <Button type="submit" disabled={!newPlaylistName.trim()} className="purple-button">
                                 Создать
                             </Button>
                         </DialogFooter>

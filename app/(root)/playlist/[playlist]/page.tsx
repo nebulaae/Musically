@@ -6,14 +6,14 @@ import { use } from "react";
 import { ru } from 'date-fns/locale'
 import { useTheme } from "next-themes";
 import { useEffect, useState } from 'react';
+import { Track } from '@/server/models/track';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Track } from '@/server/models/track';
-import { Playlist } from '@/server/models/playlist';
 import { usePlaylist } from '@/hooks/usePlaylist';
+import { Playlist } from '@/server/models/playlist';
 import { useAudio } from '@/components/player/AudioContext';
-import { FetchTracks } from '@/components/functions/FetchTracks';
 import { Music, Play, PauseIcon, Calendar } from "lucide-react";
+import { FetchTracks } from '@/components/functions/FetchTracks';
 
 interface PlaylistPageProps {
     params: Promise<{
@@ -136,8 +136,8 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     }
 
     const { playlist, tracks } = playlistData;
-    const coverImage = tracks.length > 0 && tracks[0].cover ? tracks[0].cover : '/default-cover.jpg';
-    const playlistCreatedAt = new Date(playlist.createdAt);
+    const coverImage = tracks?.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg';
+    const playlistCreatedAt = new Date(playlist?.createdAt);
     const formattedDate = formatDistanceToNow(playlistCreatedAt, {
         addSuffix: true,
         locale: ru,
