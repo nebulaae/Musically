@@ -1,6 +1,7 @@
 "use client";
 
 import { Track } from "@/server/models/track";
+import { getProxiedTrackUrl } from "@/lib/utils";
 import { useAudio } from "@/components/player/AudioContext";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
@@ -140,11 +141,20 @@ const tracksCache = createTracksCache();
 // Track request state to avoid duplicate fetches
 const pendingRequests = new Map<string, Promise<any>>();
 
+// Creating a map to store aggregated tracks for each hook instance
+const trackAggregates = new Map<string, Track[]>();
+
 export const useTracks = (options?: { trackNames?: string[]; page?: number; limit?: number; search?: string }) => {
   const { trackNames = [], page = 1, limit = 10, search = "" } = options || {};
 
+  // Create a unique identifier for this hook instance
+  const instanceId = useMemo(() => {
+    return trackNames.length > 0
+      ? `tracks-${trackNames.sort().join(",")}-${search}`
+      : `all-tracks-${search}`;
+  }, [trackNames, search]);
+
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalTracks, setTotalTracks] = useState(0);
@@ -152,30 +162,38 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
   const [currentPage, setCurrentPage] = useState(page);
   const isMountedRef = useRef(true);
 
+  // Get from AudioContext
   const { playTrackAtIndex, isPlaying, togglePlayPause, currentTime, duration } = useAudio();
 
-  // Create a stable cache key
+  // Initialize this instance's aggregate tracks if needed
+  useEffect(() => {
+    if (!trackAggregates.has(instanceId)) {
+      trackAggregates.set(instanceId, []);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      // Consider whether to remove this instance's data on unmount
+      // trackAggregates.delete(instanceId);
+    };
+  }, [instanceId]);
+
   const cacheKey = useMemo(() => {
     const baseKey = trackNames.length > 0
       ? trackNames.sort().join(",")
       : "all-tracks";
-
     const searchParam = search ? `-search-${search}` : '';
     return `${baseKey}${searchParam}-page${currentPage}-limit${limit}`;
   }, [trackNames, currentPage, limit, search]);
 
-  // Navigate between pages
   const goToPage = useCallback((newPage: number) => {
     if (newPage !== currentPage) setCurrentPage(newPage);
   }, [currentPage]);
 
-  // Fetch tracks with deduplication of concurrent requests
   const fetchTracksData = useCallback(async (cacheKey: string, url: string) => {
-    // Check if there's already a pending request for this cache key
     if (pendingRequests.has(cacheKey)) {
       return pendingRequests.get(cacheKey);
     }
-
     const fetchPromise = fetch(url, {
       headers: { "Cache-Control": "max-age=6000" },
     })
@@ -186,41 +204,48 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
         return response.json();
       })
       .finally(() => {
-        // Remove from pending requests when done
         pendingRequests.delete(cacheKey);
       });
-
-    // Store the promise to deduplicate concurrent requests
     pendingRequests.set(cacheKey, fetchPromise);
     return fetchPromise;
   }, []);
 
+  // This effect handles fetching and updating tracks without causing infinite loops
   useEffect(() => {
     isMountedRef.current = true;
 
     const fetchTracks = async () => {
       try {
-        // Check for cached data first
         const cachedData = tracksCache.getCachedData(cacheKey);
 
         if (cachedData) {
           if (isMountedRef.current) {
-            setTracks(cachedData.data);
+            // Apply proxy URL transformation to cached data
+            const proxiedCachedTracks = cachedData.data.map(track => ({
+              ...track,
+              src: getProxiedTrackUrl(track.id)
+            }));
+
+            setTracks(proxiedCachedTracks);
             setTotalTracks(cachedData.total ?? cachedData.data.length);
             setTotalPages(cachedData.totalPages || 1);
             setIsLoading(false);
 
-            // Update allTracks from cache
-            setAllTracks((prevAllTracks) => {
-              const newAllTracks = [...prevAllTracks];
-              const startIndex = (currentPage - 1) * limit;
+            // Update the aggregate collection outside of render cycles
+            const startIndex = (currentPage - 1) * limit;
+            const aggregate = trackAggregates.get(instanceId) || [];
 
-              for (let i = 0; i < cachedData.data.length; i++) {
-                newAllTracks[startIndex + i] = cachedData.data[i];
+            // Fill in the correct slots with the new tracks
+            for (let i = 0; i < proxiedCachedTracks.length; i++) {
+              if (startIndex + i < aggregate.length) {
+                aggregate[startIndex + i] = proxiedCachedTracks[i];
+              } else {
+                aggregate.push(proxiedCachedTracks[i]);
               }
+            }
 
-              return newAllTracks.filter(Boolean);
-            });
+            // Store back in the map
+            trackAggregates.set(instanceId, aggregate.filter(Boolean));
           }
           return;
         }
@@ -230,48 +255,50 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
         const queryParams = new URLSearchParams();
         queryParams.append("page", currentPage.toString());
         queryParams.append("limit", limit.toString());
-
-        // Add search parameter if provided
-        if (search) {
-          queryParams.append("search", search);
-        }
-
-        // Add track names if provided
+        if (search) queryParams.append("search", search);
         trackNames.forEach((name) => queryParams.append("tracks", name));
 
+        // Fetching from the frontend API route that forwards to the backend
         const url = `/api/tracks?${queryParams.toString()}`;
 
-        // Use the deduplication function
         const data = await fetchTracksData(cacheKey, url);
 
         if (data?.tracks && Array.isArray(data.tracks)) {
-          // Cache the response
+          // Apply proxy URL transformation to fetched data
+          const proxiedFetchedTracks = data.tracks.map((track: Track) => ({
+            ...track,
+            src: getProxiedTrackUrl(track.id)
+          }));
+
+          // Cache the data with proxied URLs
           tracksCache.setCachedData(
             cacheKey,
-            data.tracks,
+            proxiedFetchedTracks,
             data.total,
             data.totalPages
           );
 
           if (isMountedRef.current) {
-            setTracks(data.tracks);
+            setTracks(proxiedFetchedTracks);
             setTotalTracks(data.total);
             setTotalPages(data.totalPages);
             setError(null);
 
-            // Update allTracks with requested page data
-            setAllTracks((prevAllTracks) => {
-              const newAllTracks = [...prevAllTracks];
-              const startIndex = (currentPage - 1) * limit;
+            // Update the aggregate collection outside of render cycles
+            const startIndex = (currentPage - 1) * limit;
+            const aggregate = trackAggregates.get(instanceId) || [];
 
-              for (let i = 0; i < data.tracks.length; i++) {
-                if (data.tracks[i]) {
-                  newAllTracks[startIndex + i] = data.tracks[i];
-                }
+            // Fill in the correct slots with the new tracks
+            for (let i = 0; i < proxiedFetchedTracks.length; i++) {
+              if (startIndex + i < aggregate.length) {
+                aggregate[startIndex + i] = proxiedFetchedTracks[i];
+              } else {
+                aggregate.push(proxiedFetchedTracks[i]);
               }
+            }
 
-              return newAllTracks.filter(Boolean);
-            });
+            // Store back in the map
+            trackAggregates.set(instanceId, aggregate.filter(Boolean));
           }
         } else {
           if (isMountedRef.current) {
@@ -293,33 +320,42 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
     return () => {
       isMountedRef.current = false;
     };
-  }, [cacheKey, currentPage, limit, fetchTracksData]);
+  }, [cacheKey, currentPage, limit, fetchTracksData, instanceId]);
 
+  // Handle track selection without dependency on changing state
   const handleTrackSelect = useCallback((index: number, trackList?: Track[]) => {
-    // If a specific track list is provided, use it directly
+    // Use the provided trackList if available
     if (trackList && trackList.length > 0) {
       playTrackAtIndex(index, trackList);
       return;
     }
 
-    // Fallback to using all tracks
-    const tracksToUse = allTracks.length > 0 ? allTracks : tracks;
-    playTrackAtIndex(index, tracksToUse);
-  }, [playTrackAtIndex, tracks, allTracks]);
+    // Otherwise, use either the current tracks or the aggregate
+    const aggregate = trackAggregates.get(instanceId) || [];
 
-  // Clean up cache periodically (every 5 minutes)
+    // If we have aggregate tracks, use those; otherwise fall back to current page tracks
+    const tracksToPlay = aggregate.length > 0 ? aggregate : tracks;
+    playTrackAtIndex(index, tracksToPlay);
+  }, [tracks, playTrackAtIndex, instanceId]);
+
+  // Periodically clean the cache
   useEffect(() => {
     const intervalId = setInterval(() => {
       tracksCache.cleanCache();
     }, 5 * 60 * 1000);
-
     return () => clearInterval(intervalId);
   }, []);
 
+  // Compute allTracks outside of the render cycle, based on the aggregate
+  const getAllTracks = useCallback(() => {
+    return trackAggregates.get(instanceId) || [];
+  }, [instanceId]);
+
+  // Return memoized state with a function to get allTracks
   return useMemo(
     () => ({
       tracks,
-      allTracks,
+      allTracks: getAllTracks(),
       isPlaying,
       isLoading,
       error,
@@ -332,6 +368,20 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
       handleTrackSelect,
       handlePlayPauseToggle: togglePlayPause,
     }),
-    [tracks, allTracks, isPlaying, isLoading, error, currentTime, duration, totalTracks, totalPages, currentPage, goToPage, handleTrackSelect, togglePlayPause]
+    [
+      tracks,
+      getAllTracks,
+      isPlaying,
+      isLoading,
+      error,
+      currentTime,
+      duration,
+      totalTracks,
+      totalPages,
+      currentPage,
+      goToPage,
+      handleTrackSelect,
+      togglePlayPause
+    ]
   );
 };
