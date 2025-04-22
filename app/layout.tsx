@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { Toaster } from "@/components/ui/sonner";
+import { AuthGuard } from "./providers/AuthGuard";
 import { ThemeProviders } from "./providers/ThemeProviders";
 
 import "./globals.css";
@@ -33,6 +35,7 @@ export default async function RootLayout({
       >
         <ThemeProviders>
           {children}
+          <Toaster />
         </ThemeProviders>
       </body>
     </html>

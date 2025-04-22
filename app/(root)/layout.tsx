@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 
 import BottomPlayer from "@/components/player/BottomPlayer";
 
@@ -10,16 +9,6 @@ import { AudioProvider } from "@/components/player/AudioContext";
 import { AppSidebar, Trigger } from "@/components/shared/AppSidebar";
 
 import "../globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Ayfaar Radio",
@@ -33,9 +22,7 @@ export default async function RootLayout({
 }>) {
 
   return (
-    <section
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-    >
+    <section>
       <ThemeProviders>
         <SidebarProvider>
           <AudioProvider>

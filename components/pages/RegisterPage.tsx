@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RegisterFormValues, registerSchema } from "@/lib/validation";
 
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -44,15 +45,21 @@ export const RegisterPage = () => {
             });
             const data = await response.json();
 
-            // TODO MAKE A TOAST
             if (response.ok) {
-                console.log("Успешно зарегистрирован", data);
+                toast.success("Успешная авторизация!");
                 router.push("/")
+                
             } else {
-                console.error("Ошибка регистрации", data.error);
+                if (data.errorType === 'username') {
+                    form.setError('username', {
+                        type: 'manual',
+                        message: data.message
+                    })
+                } else
+                    toast.error(data.message || "Не удалось авторизоваться. Попробуйте еще раз.");
             }
         } catch (err) {
-            console.error('Register Error:', err);
+            toast.error("Произошла ошибка. Пожалуйста, попробуйте позже.");
         }
 
         // RESET THE FORM

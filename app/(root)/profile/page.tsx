@@ -1,12 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
+
 import { Button } from '@/components/ui/button';
 import { Settings, UserRound } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { PlaylistGrid } from '@/components/shared/PlaylistGrid';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
+import {
+    Tabs,
+    TabsList,
+    TabsTrigger,
+    TabsContent
+} from '@/components/ui/tabs';
 
 interface User {
     username: string;
@@ -26,6 +33,7 @@ const Page = () => {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                 });
+                
                 // TODO MAKE A TOAST
 
                 if (!response.ok) {
@@ -45,10 +53,30 @@ const Page = () => {
         getMe();
     }, []);
 
-    // TODO MAKE NORMAL FETCHING
     if (loading) {
         return (
-            <div>Loading...</div>
+            <div className="flex flex-col items-center w-full pb-32">
+                <div className="flex flex-col gap-6 container">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
+                        <Skeleton className="w-36 h-36 rounded-full" />
+                        <div className="flex flex-col gap-2">
+                            <Skeleton className="w-48 h-8" />
+                            <Skeleton className="w-24 h-6" />
+                        </div>
+                    </div>
+                    <div className="flex flex-row w-full gap-2">
+                        <Skeleton className="w-full h-8" />
+                        <Skeleton className="w-full h-8" />
+                    </div>
+                    <div className="flex flex-col w-full h-full gap-2">
+                        <Skeleton className="w-full h-16" />
+                        <Skeleton className="w-full h-16" />
+                        <Skeleton className="w-full h-16" />
+                        <Skeleton className="w-full h-16" />
+                        <Skeleton className="w-full h-16" />
+                    </div>
+                </div>
+            </div>
         )
     };
 

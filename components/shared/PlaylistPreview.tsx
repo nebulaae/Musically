@@ -31,7 +31,7 @@ interface PlaylistPreviewProps {
 }
 
 export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) => {
-    const { renamePlaylist, removePlaylist } = usePlaylist();
+    const { renamePlaylist, removePlaylist, refreshPlaylists } = usePlaylist();
     const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [newPlaylistName, setNewPlaylistName] = useState(playlist.name);
@@ -39,12 +39,13 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
     const handleDeletePlaylist = async () => {
         await removePlaylist(playlist.id);
         setIsDeleteDialogOpen(false);
+        refreshPlaylists();
     };
 
-    const handleRenamePlaylist = async (e: any) => {
-        e.preventDefault();
+    const handleRenamePlaylist = async () => {
         await renamePlaylist(playlist.id, newPlaylistName);
         setIsRenameDialogOpen(false);
+        refreshPlaylists();
     };
 
     const handleMenuClick = (e: React.MouseEvent) => {
@@ -99,7 +100,7 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 bg-white/60 glassmorphism">
                         <DropdownMenuItem onClick={() => setIsRenameDialogOpen(true)}>
-                            <Pencil className="size-4 mr-1 text-white dark:text-black" />
+                            <Pencil className="size-4 mr-1 text-black dark:text-white" />
                             <span>Переименовать</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />

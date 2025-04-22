@@ -62,10 +62,10 @@ export const PlaylistActions = ({ trackId }: PlaylistProps) => {
               <DropdownMenuItem
                 key={playlist.id}
                 onClick={() => addToPlaylist(playlist.id)}
-                className="flex items-center justify-between text-purple-800"
+                className="flex items-center justify-between purple-text"
               >
                 <span>{playlist.name}</span>
-                {isTrackInPlaylist(playlist.id) && <Check className="h-4 w-4 ml-2 text-purple-800" />}
+                {isTrackInPlaylist(playlist.id) && <Check className="h-4 w-4 ml-2 purple-text" />}
               </DropdownMenuItem>
             ))
           )}

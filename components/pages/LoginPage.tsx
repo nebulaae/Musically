@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginFormValues, loginSchema } from "@/lib/validation";
 
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -41,20 +42,19 @@ export const LoginPage = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values)
             });
+
             const data = await response.json();
             
-            // TODO MAKE A TOAST
             if (response.ok) {
-                console.log("Успешно зарегистрирован", data);
+                toast.success("Успешная авторизация!");
                 router.push("/")
             } else {
-                console.error("Ошибка регистрации", data.error);
+                toast.error(data.message || "Не удалось авторизоваться. Неверные данные или пароль.");
             }
         } catch (err) {
-            console.error('Register Error:', err);
+            toast.error("Произошла ошибка. Пожалуйста, попробуйте позже.");
         }
 
-        // RESET THE FORM
         form.reset();
     };
 

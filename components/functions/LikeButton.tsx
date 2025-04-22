@@ -1,6 +1,8 @@
 'use client';
 
+import { toast } from 'sonner';
 import { Heart } from 'lucide-react';
+import { Button } from '../ui/button'; 
 import {
     memo,
     useState,
@@ -79,6 +81,10 @@ const LikeButtonBase = ({
         } catch (error) {
             console.error('Error fetching like status:', error);
             setLikeState({ isLiked: false, isLoading: false });
+            toast.error('Failed to fetch like status', {
+                description: (error as Error).message,
+                duration: 3000
+            });
         }
     }, [trackId]);
 
@@ -127,6 +133,10 @@ const LikeButtonBase = ({
 
                         // Revert on error
                         setLikeState({ isLiked: currentIsLiked, isLoading: false });
+                        toast.error(`Failed to ${currentIsLiked ? 'unlike' : 'like'}`, {
+                            description: errorData.error,
+                            duration: 3000
+                        });
                         throw new Error(`Failed to ${currentIsLiked ? 'unlike' : 'like'}`);
                     }
 
@@ -141,6 +151,10 @@ const LikeButtonBase = ({
                 } catch (error) {
                     console.error('Error toggling like status:', error);
                     // Error handling is done above
+                    toast.error('Error toggling like status', {
+                        description: (error as Error).message,
+                        duration: 3000
+                    });
                 }
             };
 
@@ -150,7 +164,8 @@ const LikeButtonBase = ({
 
     // Render the button
     return (
-        <button
+        <Button
+            variant="ghost"
             onClick={toggleLike}
             disabled={optimisticLikeState.isLoading || isPending}
             className={`transition-all duration-200 cursor-pointer ${className}`}
@@ -163,7 +178,7 @@ const LikeButtonBase = ({
                     : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'
                     } ${(optimisticLikeState.isLoading || isPending) ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
-        </button>
+        </Button>
     );
 };
 
