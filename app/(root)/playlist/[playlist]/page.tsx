@@ -19,9 +19,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { getProxiedImageUrl } from "@/lib/utils";
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { Playlist } from '@/server/models/playlist';
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAudio } from '@/components/player/AudioContext';
 import { FetchTracks } from '@/components/functions/FetchTracks';
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface PlaylistPageProps {
     params: Promise<{
@@ -29,7 +29,7 @@ interface PlaylistPageProps {
     }>;
 }
 
-export default function PlaylistPage({ params }: PlaylistPageProps) {
+const Page = ({ params }: PlaylistPageProps) => {
     // Get the theme
     const { theme } = useTheme();
 
@@ -91,7 +91,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     }, [playlistId, getPlaylistById, theme]);
 
     const handlePlayPauseClick = () => {
-        if (playlistData && playlistData.tracks.length > 0) {
+        if (playlistData && playlistData.tracks && playlistData.tracks.length > 0) {
             // Check if we're already playing this playlist
             const currentTrack = currentTracks[currentTrackIndex];
             const isCurrentPlaylist = currentTrack &&
@@ -108,14 +108,14 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
 
     // Check if the playlist is currently playing
     const isPlaylistPlaying = () => {
-        if (!isPlaying || !playlistData || playlistData.tracks.length === 0) return false;
+        if (!isPlaying || !playlistData || !playlistData.tracks || playlistData.tracks.length === 0) return false;
 
         const currentTrack = currentTracks[currentTrackIndex];
         return currentTrack && playlistData.tracks.some(track => track.id === currentTrack.id);
     };
 
     const handleTrackSelect = (index: number) => {
-        if (playlistData) {
+        if (playlistData && playlistData.tracks) {
             playTrackAtIndex(index, playlistData.tracks);
         }
     };
@@ -129,7 +129,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
         );
     }
 
-    if (!playlistData) {
+    if (!playlistData || !playlistData.playlist || !playlistData.tracks) {
         return (
             <div className="container mx-auto p-4">
                 <div className="flex items-center justify-center h-64">
@@ -140,7 +140,8 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     }
 
     const { playlist, tracks } = playlistData;
-    const coverImage = getProxiedImageUrl(tracks?.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg');
+
+    const coverImage = getProxiedImageUrl(tracks.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg');
     const playlistCreatedAt = new Date(playlist?.createdAt);
     const formattedDate = formatDistanceToNow(playlistCreatedAt, {
         addSuffix: true,
@@ -228,4 +229,6 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
             </div>
         </div>
     );
-}
+};
+
+export default Page;

@@ -307,6 +307,66 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
+    // Add this preload function to improve initial load performance
+    const preloadAdjacentTracks = useCallback(() => {
+        if (tracks.length <= 1) return;
+
+        // Preload next track if available
+        if (currentTrackIndex < tracks.length - 1) {
+            const nextTrack = tracks[currentTrackIndex + 1];
+            const nextAudio = new Audio();
+            nextAudio.preload = "metadata";
+            nextAudio.src = nextTrack.src;
+
+            // Just load metadata and then release
+            nextAudio.addEventListener('loadedmetadata', () => {
+                nextAudio.src = ""; // Release resources
+            }, { once: true });
+        }
+    }, [tracks, currentTrackIndex]);
+
+    // Add a function to fetch track metadata in your audioContext.tsx
+    const fetchTrackMetadata = async (trackId: string): Promise<{ duration: number, format: string } | null> => {
+        try {
+            const response = await fetch(`/api/tracks/metadata/${trackId}`);
+            if (!response.ok) {
+                console.error('Failed to fetch track metadata:', response.statusText);
+                return null;
+            }
+
+            const data = await response.json();
+            return {
+                duration: data.duration,
+                format: data.format
+            };
+        } catch (error) {
+            console.error('Error fetching track metadata:', error);
+            return null;
+        }
+    };
+
+    // Then in your AudioProvider component, add logic to use this:
+    const loadTrackWithMetadata = useCallback(async (track: Track) => {
+        if (!track || !track.id) return;
+
+        // Attempt to get metadata from backend
+        const metadata = await fetchTrackMetadata(track.id);
+
+        if (metadata && metadata.duration) {
+            // Update duration directly if available from metadata
+            setDuration(metadata.duration);
+        }
+
+        // Continue with normal audio element setup...
+        if (audioRef.current) {
+            audioRef.current.src = track.src;
+
+            if (isPlaying) {
+                audioRef.current.play().catch(e => console.error("Play failed:", e));
+            }
+        }
+    }, [isPlaying]);
+
     // Load saved state from localStorage on initial render
     useEffect(() => {
         // Only run on client side
@@ -437,16 +497,93 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, [tracks, currentTrackIndex]);
 
-    // Effect for play/pause
     useEffect(() => {
-        if (audioRef.current && tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Play failed:", e));
-            } else {
-                audioRef.current.pause();
+        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
+            const currentTrack = tracks[currentTrackIndex];
+
+            if (audioRef.current && currentTrack) {
+                const audio = audioRef.current;
+
+                // Save current time of previous track if it's the same track
+                if (audio.src && audio.src.includes(currentTrack.src)) {
+                    savedTimeRef.current = audio.currentTime;
+                } else {
+                    savedTimeRef.current = 0;
+                }
+
+                // Force load metadata 
+                const handleCanPlayThrough = () => {
+                    // Ensure duration is set correctly
+                    if (isNaN(audio.duration) || !isFinite(audio.duration)) {
+                        console.warn("Invalid duration detected, trying to fix...");
+
+                        // Force metadata loading by playing a tiny bit then pausing
+                        audio.volume = 0; // Mute during this operation
+                        const playPromise = audio.play();
+
+                        if (playPromise !== undefined) {
+                            playPromise
+                                .then(() => {
+                                    // Successfully started playing
+                                    setTimeout(() => {
+                                        audio.pause();
+                                        audio.volume = volume; // Restore volume
+                                        setDuration(audio.duration || 0);
+                                        // Restore playback state
+                                        if (isPlaying) {
+                                            audio.play().catch(e => console.error("Play resumption failed:", e));
+                                        }
+                                    }, 500); // Try getting duration after 500ms
+                                })
+                                .catch(e => {
+                                    console.error("Metadata load attempt failed:", e);
+                                    audio.volume = volume; // Restore volume even on failure
+                                });
+                        }
+                    } else {
+                        setDuration(audio.duration);
+                    }
+                };
+
+                // Enhanced metadata loading
+                const loadMetadata = () => {
+                    setDuration(audio.duration || 0);
+
+                    // If duration is invalid, schedule a retry
+                    if (isNaN(audio.duration) || !isFinite(audio.duration)) {
+                        setTimeout(() => {
+                            if (isNaN(audio.duration) || !isFinite(audio.duration)) {
+                                console.warn("Duration still invalid after initial load, trying again");
+                                // Additional retry method
+                                audio.load(); // Reload the audio
+                            } else {
+                                setDuration(audio.duration);
+                            }
+                        }, 1000);
+                    }
+
+                    // After metadata is loaded, set the saved time and handle play state
+                    audio.currentTime = savedTimeRef.current;
+                    if (isPlaying) {
+                        audio.play().catch(e => console.error("Play failed:", e));
+                    }
+                };
+
+                // Update source
+                audio.src = currentTrack.src;
+                audio.preload = "metadata"; // Ensure metadata is loaded
+
+                // Set up enhanced event listeners
+                audio.addEventListener('loadedmetadata', loadMetadata, { once: true });
+                audio.addEventListener('canplaythrough', handleCanPlayThrough, { once: true });
+
+                return () => {
+                    audio.removeEventListener('loadedmetadata', loadMetadata);
+                    audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+                };
             }
         }
-    }, [isPlaying, tracks, currentTrackIndex]);
+    }, [tracks, currentTrackIndex, isPlaying, volume]);
 
     // Effect for volume changes
     useEffect(() => {
@@ -454,6 +591,74 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             audioRef.current.volume = volume;
         }
     }, [volume]);
+
+    // Call this function when changing tracks
+    // Add this to your track change effect
+    useEffect(() => {
+        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
+            const currentTrack = tracks[currentTrackIndex];
+            loadTrackWithMetadata(currentTrack);
+        }
+    }, [tracks, currentTrackIndex, loadTrackWithMetadata]);
+
+    // --- Performance Optimization ---
+
+    // Add this to your AudioContext component
+
+    // Throttled time update to reduce CPU usage
+    useEffect(() => {
+        if (!audioRef.current) return;
+
+        const audio = audioRef.current;
+        let lastUpdateTime = 0;
+
+        const handleTimeUpdate = () => {
+            const now = Date.now();
+            // Update state at most every 250ms to reduce render frequency
+            if (now - lastUpdateTime > 250) {
+                setCurrentTime(audio.currentTime || 0);
+                lastUpdateTime = now;
+            }
+        };
+
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+
+        return () => {
+            audio.removeEventListener('timeupdate', handleTimeUpdate);
+        };
+    }, []);
+
+    // Call preloadAdjacentTracks in your track change effect
+    useEffect(() => {
+        preloadAdjacentTracks();
+    }, [currentTrackIndex, preloadAdjacentTracks]);
+
+    // Enhanced error handling for audio playback
+    useEffect(() => {
+        if (!audioRef.current) return;
+
+        const audio = audioRef.current;
+
+        const handleError = (e: ErrorEvent) => {
+            console.error("Audio playback error:", e);
+
+            // Try to recover from error
+            setTimeout(() => {
+                if (audioRef.current) {
+                    audioRef.current.load();
+                    if (isPlaying) {
+                        audioRef.current.play().catch(e => console.error("Recovery play failed:", e));
+                    }
+                }
+            }, 1000);
+        };
+
+        audio.addEventListener('error', handleError);
+
+        return () => {
+            audio.removeEventListener('error', handleError);
+        };
+    }, [isPlaying]);
 
     // Memoize context value to prevent unnecessary re-renders
     const contextValue = useMemo(() => ({
