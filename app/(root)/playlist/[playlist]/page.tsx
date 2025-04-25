@@ -3,6 +3,7 @@
 import Image from "next/image";
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Music,
     Play,
@@ -13,13 +14,13 @@ import {
 import { use } from "react";
 import { ru } from 'date-fns/locale'
 import { useTheme } from "next-themes";
+import { pluralize } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { Track } from '@/server/models/track';
 import { formatDistanceToNow } from 'date-fns';
 import { getProxiedImageUrl } from "@/lib/utils";
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { Playlist } from '@/server/models/playlist';
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAudio } from '@/components/player/AudioContext';
 import { FetchTracks } from '@/components/functions/FetchTracks';
 
@@ -29,7 +30,7 @@ interface PlaylistPageProps {
     }>;
 }
 
-const Page = ({ params }: PlaylistPageProps) => {
+export default function PlaylistPage({ params }: PlaylistPageProps) {
     // Get the theme
     const { theme } = useTheme();
 
@@ -45,11 +46,11 @@ const Page = ({ params }: PlaylistPageProps) => {
     // Improved Spotify-like gradients
     const generateGradient = () => {
         const gradients: string[] = [
-            'from-indigo-600 to-purple-800',
-            'from-fuchsia-600 to-purple-900',
-            'from-emerald-600 to-teal-900',
-            'from-rose-500 to-pink-900',
-            'from-sky-500 to-blue-900',
+            'bg-gradient-to-r from-violet-200 to-pink-200',
+            'bg-gradient-to-r from-blue-200 to-cyan-200',
+            'bg-gradient-to-r from-teal-200 to-teal-500',
+            'bg-gradient-to-r from-fuchsia-600 to-purple-600',
+            'bg-gradient-to-r from-indigo-400 to-cyan-400',
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
@@ -57,15 +58,15 @@ const Page = ({ params }: PlaylistPageProps) => {
 
     const generateDarkGradient = () => {
         const gradients: string[] = [
-            'from-indigo-900 to-purple-950',
-            'from-fuchsia-900 to-purple-950',
-            'from-emerald-900 to-teal-950',
-            'from-rose-900 to-pink-950',
-            'from-amber-900 to-orange-950',
-            'from-sky-900 to-blue-950',
-            'from-slate-900 to-slate-700',
-            'from-slate-500 to-slate-800',
-            'from-blue-900 to-indigo-950'
+            'bg-gradient-to-r from-indigo-900 to-purple-950',
+            'bg-gradient-to-l from-fuchsia-900 to-purple-950',
+            'bg-gradient-to-r from-emerald-900 to-teal-950',
+            'bg-gradient-to-t from-rose-900 to-pink-950',
+            'bg-gradient-to-b from-amber-900 to-orange-950',
+            'bg-gradient-to-tl from-sky-900 to-blue-950',
+            'bg-gradient-to-br from-slate-900 to-slate-700',
+            'bg-gradient-to-bl from-slate-500 to-slate-800',
+            'bg-gradient-to-tr from-blue-900 to-indigo-950'
         ];
 
         return gradients[Math.floor(Math.random() * gradients.length)];
@@ -73,13 +74,22 @@ const Page = ({ params }: PlaylistPageProps) => {
 
     const { playTrackAtIndex, isPlaying, togglePlayPause, currentTrackIndex, tracks: currentTracks } = useAudio();
 
+    // Modify your useEffect to prevent constant re-renders
     useEffect(() => {
         const fetchPlaylistData = async () => {
             try {
-                setIsLoading(true);
+                // Don't set loading if already loading
+                if (!isLoading) setIsLoading(true);
+
                 const data = await getPlaylistById(playlistId);
-                setDominantColor(theme === 'dark' ? generateDarkGradient() : generateGradient());
-                setPlaylistData(data);
+                // Only update state if necessary
+                if (data) {
+                    setDominantColor(theme === 'dark' ? generateDarkGradient() : generateGradient());
+                    // Use JSON.stringify comparison to avoid unnecessary updates
+                    if (JSON.stringify(data) !== JSON.stringify(playlistData)) {
+                        setPlaylistData(data);
+                    }
+                }
             } catch (error) {
                 console.error('Error fetching playlist:', error);
             } finally {
@@ -88,10 +98,15 @@ const Page = ({ params }: PlaylistPageProps) => {
         };
 
         fetchPlaylistData();
-    }, [playlistId, getPlaylistById, theme]);
+
+        // Set up a less frequent refresh interval instead of constant updates
+        const refreshInterval = setInterval(fetchPlaylistData, 30000); // Refresh every 30 seconds
+
+        return () => clearInterval(refreshInterval);
+    }, [playlistId, getPlaylistById]); // Remove theme and playlistData from dependencies
 
     const handlePlayPauseClick = () => {
-        if (playlistData && playlistData.tracks && playlistData.tracks.length > 0) {
+        if (playlistData && playlistData.tracks.length > 0) {
             // Check if we're already playing this playlist
             const currentTrack = currentTracks[currentTrackIndex];
             const isCurrentPlaylist = currentTrack &&
@@ -108,14 +123,14 @@ const Page = ({ params }: PlaylistPageProps) => {
 
     // Check if the playlist is currently playing
     const isPlaylistPlaying = () => {
-        if (!isPlaying || !playlistData || !playlistData.tracks || playlistData.tracks.length === 0) return false;
+        if (!isPlaying || !playlistData || playlistData.tracks.length === 0) return false;
 
         const currentTrack = currentTracks[currentTrackIndex];
         return currentTrack && playlistData.tracks.some(track => track.id === currentTrack.id);
     };
 
     const handleTrackSelect = (index: number) => {
-        if (playlistData && playlistData.tracks) {
+        if (playlistData) {
             playTrackAtIndex(index, playlistData.tracks);
         }
     };
@@ -129,7 +144,7 @@ const Page = ({ params }: PlaylistPageProps) => {
         );
     }
 
-    if (!playlistData || !playlistData.playlist || !playlistData.tracks) {
+    if (!playlistData) {
         return (
             <div className="container mx-auto p-4">
                 <div className="flex items-center justify-center h-64">
@@ -140,8 +155,7 @@ const Page = ({ params }: PlaylistPageProps) => {
     }
 
     const { playlist, tracks } = playlistData;
-
-    const coverImage = getProxiedImageUrl(tracks.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg');
+    const coverImage = getProxiedImageUrl(tracks?.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg');
     const playlistCreatedAt = new Date(playlist?.createdAt);
     const formattedDate = formatDistanceToNow(playlistCreatedAt, {
         addSuffix: true,
@@ -151,7 +165,7 @@ const Page = ({ params }: PlaylistPageProps) => {
     return (
         <div className="flex flex-col w-full min-h-screen pb-42 bg-main relative">
             {/* Spotify-like gradient background overlay */}
-            <div className={`absolute top-0 left-0 right-0 h-96 bg-gradient-to-b backdrop-blur-xl ${dominantColor} opacity-40 z-0`} />
+            <div className={`absolute top-0 left-0 right-0 h-96 backdrop-blur-xl ${dominantColor} opacity-40 z-0`} />
 
             {/* Header content with transparent bottom */}
             <div className="relative z-10 pt-6 md:pt-8 px-6 md:px-8">
@@ -178,7 +192,11 @@ const Page = ({ params }: PlaylistPageProps) => {
                         <div className="flex flex-col sm:flex-row items-center gap-2 text-sm opacity-80">
                             <p className="flex items-center gap-1">
                                 <Music className="w-3 h-3" />
-                                {tracks.length} {tracks.length === 1 ? 'песня' : 'песен'}
+                                {tracks.length !== undefined ?
+                                    `${tracks.length} ${pluralize(tracks.length, ['Песня', 'Песни', 'Песен'])}`
+                                    : `${playlist.tracks.length} ${pluralize(playlist.tracks.length, ['Песня', 'Песни', 'Песен'])}`
+                                }
+
                             </p>
                             <span className="hidden sm:flex">•</span>
                             <div className="flex items-center gap-1">
@@ -229,6 +247,4 @@ const Page = ({ params }: PlaylistPageProps) => {
             </div>
         </div>
     );
-};
-
-export default Page;
+}

@@ -47,8 +47,8 @@ export const RegisterPage = () => {
 
             if (response.ok) {
                 toast.success("Успешная авторизация!");
-                router.push("/")
-                
+                router.push("/");
+                window.location.reload();
             } else {
                 if (data.errorType === 'username') {
                     form.setError('username', {

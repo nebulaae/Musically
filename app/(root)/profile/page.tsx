@@ -1,13 +1,19 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from 'react';
+import { useToken } from '@/app/providers/TokenProvider';
 import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
 
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Settings, UserRound } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Authorise } from '@/components/shared/Authorise';
 import { PlaylistGrid } from '@/components/shared/PlaylistGrid';
+import {
+    Settings,
+    UserRound
+} from 'lucide-react';
 import {
     Tabs,
     TabsList,
@@ -21,6 +27,8 @@ interface User {
 }
 
 const Page = () => {
+    // TOKEN
+    const { isTokenExist } = useToken();
     // FETCH USER
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
@@ -33,15 +41,14 @@ const Page = () => {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                 });
-                
-                // TODO MAKE A TOAST
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch user');
+                    toast.error('Ошибка при загрузке пользователя.');
                 }
 
                 const data = await response.json();
                 setUser(data.user);
+
             } catch (err) {
                 console.error('Error fetching current user:', err);
                 setError('Failed to fetch tracks');
@@ -81,9 +88,7 @@ const Page = () => {
     };
 
     if (error) return <div className="flex items-center justify-center w-full text-red-500">Ошибка: {error}</div>;
-
-    if (!user) return <div>Not authenticated</div>;
-
+    if (!user) return <Authorise profile />;
 
     return (
         <section className="flex flex-col items-center w-full pb-32">

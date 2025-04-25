@@ -3,17 +3,15 @@
 import Link from 'next/link';
 
 import { useState } from 'react';
-import { Playlist } from '@/server/models/playlist';
+import { pluralize } from '@/lib/utils';
 import { usePlaylist } from '@/hooks/usePlaylist';
+import { Playlist } from '@/server/models/playlist';
+
+import { toast } from 'sonner';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Music, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
     Dialog,
     DialogContent,
@@ -22,15 +20,20 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface PlaylistPreviewProps {
+interface PlaylistCardProps {
     playlist: Playlist;
     trackCount?: number;
 }
 
-export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) => {
+export const PlaylistCard = ({ playlist, trackCount }: PlaylistCardProps) => {
     const { renamePlaylist, removePlaylist, refreshPlaylists } = usePlaylist();
     const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -38,12 +41,15 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
 
     const handleDeletePlaylist = async () => {
         await removePlaylist(playlist.id);
+        toast.success("Плейлист был успешно удален.")
         setIsDeleteDialogOpen(false);
         refreshPlaylists();
+        window.location.reload();
     };
 
     const handleRenamePlaylist = async () => {
         await renamePlaylist(playlist.id, newPlaylistName);
+        toast.success("Плейлист был успешно переименован.")
         setIsRenameDialogOpen(false);
         refreshPlaylists();
     };
@@ -56,13 +62,16 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
     // Generate a random gradient for each playlist
     const generateGradient = () => {
         const gradients = [
-            'from-blue-600 to-purple-600',
-            'from-green-600 to-teal-600',
-            'from-purple-600 to-pink-600',
-            'from-yellow-600 to-orange-600',
-            'from-red-600 to-pink-600',
-            'from-blue-600 to-cyan-600',
-            'from-indigo-600 to-purple-600',
+            'from-blue-500 to-purple-500',
+            'from-green-500 to-teal-500',
+            'from-purple-500 to-pink-500',
+            'from-yellow-500 to-orange-500',
+            'from-red-500 to-pink-500',
+            'from-blue-500 to-cyan-500',
+            'from-indigo-500 to-purple-500',
+            'from-green-500 to-blue-500',
+            'from-orange-500 to-red-500',
+            'from-teal-500 to-green-500'
         ];
 
         // Use a hash of the playlist ID to ensure consistent colors for the same playlist
@@ -71,7 +80,7 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
     };
 
     return (
-        <div className="relative group">
+        <div className="relative">
             <Link href={`/playlist/${playlist.id}`}>
                 <div className={`relative w-full h-40 rounded-lg overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${generateGradient()}`}>
                     <div className="absolute inset-0 flex items-center justify-center opacity-70">
@@ -81,16 +90,16 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                     <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                         <h3 className="font-bold text-lg truncate">{playlist.name}</h3>
                         <p className="text-sm opacity-80">
-                            {trackCount !== undefined
-                                ? `${trackCount} ${trackCount === 1 ? 'Песня' : 'Песен'}`
-                                : `${playlist.tracks.length} ${playlist.tracks.length === 1 ? 'Песни' : 'Песен'}`}
+                            {trackCount !== undefined ?
+                                `${trackCount} ${pluralize(trackCount, ['Песня', 'Песни', 'Песен'])}`
+                                : `${playlist.tracks.length} ${pluralize(playlist.tracks.length, ['Песня', 'Песни', 'Песен'])}`}
                         </p>
                     </div>
                 </div>
             </Link>
 
             {/* Dropdown Menu */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleMenuClick}>
+            <div className="absolute top-2 right-2" onClick={handleMenuClick}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="rounded-full bg-main focus-visible:ring-0 cursor-pointer">
@@ -98,9 +107,9 @@ export const PlaylistPreview = ({ playlist, trackCount }: PlaylistPreviewProps) 
                             <span className="sr-only">Действия с плейлистом</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-white/60 glassmorphism">
+                    <DropdownMenuContent align="end" className="w-56 bg-main">
                         <DropdownMenuItem onClick={() => setIsRenameDialogOpen(true)}>
-                            <Pencil className="size-4 mr-1 text-black dark:text-white" />
+                            <Pencil className="size-4 mr-1" />
                             <span>Переименовать</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />

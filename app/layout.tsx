@@ -1,7 +1,9 @@
 import { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { getToken } from "@/lib/token";
 import { Toaster } from "@/components/ui/sonner";
+import { TokenProvider } from "./providers/TokenProvider";
 import { ThemeProviders } from "./providers/ThemeProviders";
 
 import "./globals.css";
@@ -26,6 +28,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const tokenResult = await getToken();
+  const token = tokenResult?.token?.value;
 
   return (
     <html lang="ru">
@@ -33,8 +37,10 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProviders>
-          {children}
-          <Toaster />
+          <TokenProvider token={token}>
+            {children}
+            <Toaster />
+          </TokenProvider>
         </ThemeProviders>
       </body>
     </html>

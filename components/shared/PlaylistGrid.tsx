@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { usePlaylist } from '@/hooks/usePlaylist';
 
 import { PlusCircle } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PlaylistPreview } from '@/components/shared/PlaylistPreview';
+import { PlaylistCard } from '@/components/shared/PlaylistCard';
 import {
     Dialog,
     DialogContent,
@@ -15,7 +16,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from '../ui/skeleton';
 
 export const PlaylistGrid = () => {
     const { playlists, isLoading, createNewPlaylist, refreshPlaylists } = usePlaylist();
@@ -74,7 +74,7 @@ export const PlaylistGrid = () => {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                     {playlists.map((playlist) => (
-                        <PlaylistPreview key={playlist.id} playlist={playlist} />
+                        <PlaylistCard key={playlist.id} playlist={playlist} />
                     ))}
                 </div>
             )}

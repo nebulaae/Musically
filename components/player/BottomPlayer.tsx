@@ -234,7 +234,6 @@ const BottomPlayer = () => {
                                 ? 'mt-10 flex-col justify-center text-center gap-y-4' // Expanded: Centered column
                                 : 'w-full md:w-[250px] lg:w-[300px] cursor-pointer' // Collapsed: Fixed width, allow clicking to expand
                             }`}
-                        onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
                     >
                         <Image
                             src={coverSrc}
@@ -243,9 +242,14 @@ const BottomPlayer = () => {
                             height={isExpanded ? 250 : 48}
                             className={`rounded-sm flex-shrink-0 ${isExpanded ? 'rounded-xl shadow-xl mb-4' : ''}`}
                             priority // Prioritize loading cover art
+                            onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
+
                         />
                         {/* --- Title and Author Container --- */}
-                        <div className={`flex flex-col justify-center min-w-0 ${isExpanded ? 'items-center' : 'flex-grow'}`}>
+                        <div
+                            className={`flex flex-col justify-center min-w-0 ${isExpanded ? 'items-center' : 'flex-grow'}`}
+                            onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
+                        >
                             {/* --- Marquee Title --- */}
                             <div className={`font-semibold ${isExpanded ? 'text-xl mb-1' : 'w-full overflow-hidden whitespace-nowrap'}`}>
                                 {!isExpanded && isTitleLong ? (

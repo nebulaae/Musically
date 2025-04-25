@@ -6,7 +6,7 @@ async function safeJsonParse(response: Response) {
     try {
         return await response.json();
     } catch (e) {
-        console.error("Failed to parse JSON response:", e);
+        console.warn("Failed to parse JSON response:", e);
         return { error: "Invalid response from server" };
     }
 }
@@ -25,12 +25,12 @@ export async function createPlaylist(name: string): Promise<Playlist> {
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to create playlist');
+            console.warn(data.error || data.message || 'Failed to create playlist');
         }
 
         return data.playlist;
     } catch (error) {
-        console.error("Create playlist error:", error);
+        console.warn("Create playlist error:", error);
         throw error;
     }
 }
@@ -49,10 +49,10 @@ export async function addTrackToPlaylist(playlistId: string, trackId: string): P
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(`Failed to add track to playlist: ${data.error}, ${data.message}`);
+            console.warn(`Failed to add track to playlist: ${data.error}, ${data.message}`);
         }
     } catch (error) {
-        console.error("Add track to playlist error:", error);
+        console.warn("Add track to playlist error:", error);
         throw error;
     }
 }
@@ -71,10 +71,10 @@ export async function removeTrackFromPlaylist(playlistId: string, trackId: strin
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to remove track from playlist');
+            console.warn(data.error || data.message || 'Failed to remove track from playlist');
         }
     } catch (error) {
-        console.error("Remove track from playlist error:", error);
+        console.warn("Remove track from playlist error:", error);
         throw error;
     }
 }
@@ -93,10 +93,10 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to delete playlist');
+            console.warn(data.error || data.message || 'Failed to delete playlist');
         }
     } catch (error) {
-        console.error("Delete playlist error:", error);
+        console.warn("Delete playlist error:", error);
         throw error;
     }
 }
@@ -115,10 +115,10 @@ export async function renamePlaylist(playlistId: string, newName: string): Promi
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to rename playlist');
+            console.warn(data.error || data.message || 'Failed to rename playlist');
         }
     } catch (error) {
-        console.error("Rename playlist error:", error);
+        console.warn("Rename playlist error:", error);
         throw error;
     }
 }
@@ -133,19 +133,30 @@ export async function getPlaylistWithTracks(playlistId: string): Promise<{ playl
             },
         });
 
-        if (response.status === 404) {
-            return null;
-        }
-
-        const data = await safeJsonParse(response);
+        const data = await response.json();
 
         if (!response.ok) {
+            console.warn('API error:', data.error || data.message || 'Failed to get playlist');
             throw new Error(data.error || data.message || 'Failed to get playlist');
+        }
+
+        // Make sure data has the expected structure
+        if (!data.playlist) {
+            console.warn('API returned unexpected data structure, missing playlist:', data);
+            // Attempt to adapt to potential different structure
+            if (data.id && data.name) {
+                // If the API returns the playlist directly instead of in a playlist property
+                return {
+                    playlist: data,
+                    tracks: data.tracks || []
+                };
+            }
+            return null;
         }
 
         return data;
     } catch (error) {
-        console.error("Get playlist error:", error);
+        console.warn("Get playlist error:", error);
         throw error;
     }
 }
@@ -163,12 +174,12 @@ export async function getAllPlaylists(): Promise<Playlist[]> {
         const data = await safeJsonParse(response);
 
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Failed to get playlists');
+            console.warn(data.error || data.message || 'Failed to get playlists');
         }
 
         return data.playlists;
     } catch (error) {
-        console.error("Get all playlists error:", error);
+        console.warn("Get all playlists error:", error);
         throw error;
     }
 }

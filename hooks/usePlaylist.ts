@@ -13,6 +13,8 @@ import {
     deletePlaylist,
     renamePlaylist as renamePlaylistDb,
 } from '@/server/actions/playlist';
+import { getProxiedTrackUrl } from '@/lib/utils';
+import { Track } from '@/server/models/track';
 
 export const usePlaylist = (trackId?: string) => {
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -112,9 +114,48 @@ export const usePlaylist = (trackId?: string) => {
 
     const getPlaylistById = useCallback(async (playlistId: string) => {
         try {
-            return await getPlaylistWithTracks(playlistId);
+            const result = await getPlaylistWithTracks(playlistId);
+
+            // Check if result is null (playlist not found)
+            if (!result) {
+                console.log('Playlist not found:', playlistId);
+                return null;
+            }
+
+            // Handle case where we have playlist but no separate tracks property
+            if (result.playlist && !result.tracks) {
+                // Check if tracks are nested within the playlist object
+                const tracks = result.playlist.tracks || [];
+
+                // Process tracks to ensure they have proper streaming URLs
+                const proxiedFetchedTracks = tracks.map((track: any) => ({
+                    ...track,
+                    src: getProxiedTrackUrl(track.id)
+                }));
+
+                return {
+                    playlist: result.playlist,
+                    tracks: proxiedFetchedTracks,
+                };
+            }
+
+            // Handle normal case with both playlist and tracks properties
+            if (result.playlist && result.tracks) {
+                const proxiedFetchedTracks = result.tracks.map((track: Track) => ({
+                    ...track,
+                    src: getProxiedTrackUrl(track.id)
+                }));
+
+                return {
+                    playlist: result.playlist,
+                    tracks: proxiedFetchedTracks,
+                };
+            }
+
+            console.error('Invalid playlist data structure:', result);
+            return null;
         } catch (error) {
-            console.error('Error getting playlist:', error);
+            console.error('Error fetching playlist:', error);
             return null;
         }
     }, []);

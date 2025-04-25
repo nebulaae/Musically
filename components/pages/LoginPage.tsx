@@ -47,7 +47,8 @@ export const LoginPage = () => {
             
             if (response.ok) {
                 toast.success("Успешная авторизация!");
-                router.push("/")
+                router.push("/");
+                window.location.reload();
             } else {
                 toast.error(data.message || "Не удалось авторизоваться. Неверные данные или пароль.");
             }
