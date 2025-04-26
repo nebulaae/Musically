@@ -12,7 +12,8 @@ import {
   PaginationItem,
   PaginationLink,
   PaginationNext,
-  PaginationPrevious
+  PaginationPrevious,
+  PaginationEllipsis,
 } from "@/components/ui/pagination";
 
 import { Track } from '@/server/models/track';
@@ -159,7 +160,7 @@ export const FetchTracks = memo(({
   // Check if a track is the currently playing track (memoized)
   const getTrackPlayingState = useCallback((track: Track) => {
     if (!isPlaying) return false;
-    const currentTrack = currentTracks[currentTrackIndex];
+    const currentTrack = currentTracks[currentTrackIndex!];
     return currentTrack && currentTrack.id === track.id;
   }, [isPlaying, currentTrackIndex, currentTracks]);
 
@@ -235,8 +236,43 @@ export const FetchTracks = memo(({
   }
 
   // Render pagination component
+  // Render pagination component
   const renderPagination = () => {
     if (totalPages <= 1) return null;
+
+    // Calculate which pages to show with ellipsis
+    const getVisiblePages = () => {
+      const maxDisplayedPages = 5; // You can adjust this number
+
+      // Always show all pages if there are few enough
+      if (totalPages <= maxDisplayedPages) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+
+      const sidePages = Math.floor((maxDisplayedPages - 3) / 2);
+      const leftSide = Math.max(2, currentPage - sidePages);
+      const rightSide = Math.min(totalPages - 1, currentPage + sidePages);
+
+      const visiblePages = [1];
+
+      if (leftSide > 2) {
+        visiblePages.push(-1); // Left ellipsis
+      }
+
+      for (let i = leftSide; i <= rightSide; i++) {
+        visiblePages.push(i);
+      }
+
+      if (rightSide < totalPages - 1) {
+        visiblePages.push(-2); // Right ellipsis
+      }
+
+      visiblePages.push(totalPages);
+
+      return visiblePages;
+    };
+
+    const visiblePages = getVisiblePages();
 
     return (
       <Pagination className="mt-6">
@@ -248,16 +284,22 @@ export const FetchTracks = memo(({
             />
           </PaginationItem>
 
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-            <PaginationItem key={page}>
-              <PaginationLink
-                onClick={() => goToPage(page)}
-                isActive={currentPage === page}
-                className="cursor-pointer"
-              >
-                {page}
-              </PaginationLink>
-            </PaginationItem>
+          {visiblePages.map((page, index) => (
+            page < 0 ? (
+              <PaginationItem key={`ellipsis-${page}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  onClick={() => goToPage(page)}
+                  isActive={currentPage === page}
+                  className="cursor-pointer"
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            )
           ))}
 
           <PaginationItem>

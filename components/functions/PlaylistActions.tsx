@@ -9,6 +9,7 @@ import { useToken } from '@/app/providers/TokenProvider';
 
 interface PlaylistProps {
   trackId: string;
+  icon?: boolean
 }
 
 const DynamicPlaylistDrawer = dynamic(() => import('./PlaylistDrawer'), {
@@ -16,7 +17,10 @@ const DynamicPlaylistDrawer = dynamic(() => import('./PlaylistDrawer'), {
   ssr: false,
 });
 
-export const PlaylistActions = ({ trackId }: PlaylistProps) => {
+export const PlaylistActions = ({
+  trackId,
+  icon = true,
+}: PlaylistProps) => {
   const { isTokenExist } = useToken();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -29,7 +33,11 @@ export const PlaylistActions = ({ trackId }: PlaylistProps) => {
         onClick={() => setDrawerOpen(true)}
         disabled={!isTokenExist}
       >
-        <EllipsisVertical className="h-6 w-6" />
+        {icon ? (
+          <EllipsisVertical className="h-6 w-6" />
+        ) : (
+          <span>Добавить в плейлист</span>
+        )}
         <span className="sr-only">Добавить в плейлист</span>
       </Button>
 

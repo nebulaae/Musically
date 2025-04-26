@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useToken } from '@/app/providers/TokenProvider';
 import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
 
 import { toast } from 'sonner';
@@ -27,13 +26,18 @@ interface User {
 }
 
 const Page = () => {
-    // TOKEN
-    const { isTokenExist } = useToken();
-    // FETCH USER
+    // USER STATES
     const [user, setUser] = useState<User | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState("");
 
+    // TOTAL LIKE STATES
+    const [totalLikes, setTotalLikes] = useState<number>(0);
+
+    // TOTAL PLAYLIST STATES
+    const [totalPlaylists, setTotalPlaylists] = useState<number>(0);
+
+    // FETCH THE USER
     useEffect(() => {
         const getMe = async () => {
             try {
@@ -58,6 +62,60 @@ const Page = () => {
         };
 
         getMe();
+    }, []);
+
+    // FETCH THE LIKES
+    useEffect(() => {
+        const getTotalLikes = async () => {
+            try {
+                const response = await fetch('/api/user/likedSongs', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (!response.ok) {
+                    toast.error('Ошибка при загрузке пользователя.');
+                }
+
+                const data = await response.json();
+
+                setTotalLikes(data.total);
+            } catch (err) {
+                console.error('Error fetching total likes:', err);
+                setError('Failed to fetch likes');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        getTotalLikes();
+    }, []);
+
+    // FETCH THE PLAYLISTS
+    useEffect(() => {
+        const getTotalLikes = async () => {
+            try {
+                const response = await fetch('/api/playlist/getAllPlaylists', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (!response.ok) {
+                    toast.error('Ошибка при загрузке пользователя.');
+                }
+
+                const data = await response.json();
+
+                setTotalPlaylists(data.total);
+            } catch (err) {
+                console.error('Error fetching total likes:', err);
+                setError('Failed to fetch likes');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        getTotalLikes();
     }, []);
 
     if (loading) {
@@ -113,8 +171,8 @@ const Page = () => {
                         <div className="flex flex-col items-start gap-4">
                             <h1 className="text-xl sm:text-4xl font-bold">Добро пожаловать, {user.username}!</h1>
                             <div className="flex justify-start md:justify-center gap-4">
-                                <p className="text-gray-500">Лайки: 999</p>
-                                <p className="text-gray-500">Плейлисты: 999</p>
+                                <p className="text-gray-500">Лайки: {totalLikes}</p>
+                                <p className="text-gray-500">Плейлисты: {totalPlaylists}</p>
                             </div>
                         </div>
                     </div>

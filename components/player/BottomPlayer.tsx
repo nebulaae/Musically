@@ -1,7 +1,8 @@
 "use client"
 
 import Image from 'next/image';
-import Marquee from "react-fast-marquee"; // Import the marquee component
+import Marquee from "react-fast-marquee";
+
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
 import { LikeButton } from '@/components/functions/LikeButton';
@@ -33,6 +34,7 @@ import {
     AnimatePresence
 } from 'framer-motion';
 import { getProxiedImageUrl } from '@/lib/utils';
+import { TrackActions } from '../functions/TrackActions';
 
 const BottomPlayer = () => {
     const {
@@ -61,7 +63,7 @@ const BottomPlayer = () => {
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [isTitleLong, setIsTitleLong] = useState<boolean>(false); // State to check title length
 
-    const currentTrack = tracks?.[currentTrackIndex];
+    const currentTrack = tracks?.[currentTrackIndex!];
     const hasShuffle = tracks && tracks.length > 1;
 
     // For vertical swipe gesture
@@ -71,7 +73,7 @@ const BottomPlayer = () => {
 
     // Show player when there are tracks
     useEffect(() => {
-        if (tracks && tracks.length > 0 && currentTrackIndex !== undefined && currentTrackIndex >= 0) {
+        if (tracks && tracks.length > 0 && currentTrackIndex !== undefined && currentTrackIndex! >= 0) {
             setIsPlayerVisible(true);
         } else {
             setIsPlayerVisible(false);
@@ -271,7 +273,8 @@ const BottomPlayer = () => {
                         {/* --- Collapsed View Buttons (Like/Mobile Play) --- */}
                         {!isExpanded && (
                             <div className="flex items-center ml-auto md:ml-4 flex-shrink-0"> {/* Use ml-auto to push right */}
-                                <LikeButton trackId={currentTrack?.id || ''} size="md" />
+                                {/* <LikeButton trackId={currentTrack?.id || ''} size="md" /> */}
+                                <TrackActions trackId={currentTrack?.id || ''} />
                                 <motion.button
                                     className={`flex sm:hidden p-2 ml-1 ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                     onClick={handlePlayPauseToggle}

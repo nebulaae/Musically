@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, {
     createContext,
@@ -7,9 +7,10 @@ import React, {
     useEffect,
     useCallback,
     useMemo,
-    useRef
+    useRef,
 } from 'react';
 
+// Interfaces (keep as they are)
 interface Track {
     id: string;
     title: string;
@@ -20,7 +21,6 @@ interface Track {
     album?: string;
 }
 
-// Minimal track info for storage
 interface MinimalTrack {
     id: string;
     title: string;
@@ -30,13 +30,15 @@ interface MinimalTrack {
 
 interface AudioContextType {
     tracks: Track[];
-    currentTrackIndex: number;
+    currentTrack: Track | null; // Provide the full current track object
+    currentTrackIndex: number | null; // Allow null for no track selected
     isPlaying: boolean;
     volume: number;
     currentTime: number;
     duration: number;
     shuffleMode: boolean;
-    repeatMode: boolean;
+    repeatMode: boolean; // More explicit repeat modes
+    isLoading: boolean; // Indicate when track is loading
     playTrack: (track: Track, trackList?: Track[]) => void;
     playTrackAtIndex: (index: number, trackList: Track[]) => void;
     togglePlayPause: () => void;
@@ -45,16 +47,15 @@ interface AudioContextType {
     setVolume: (value: number) => void;
     seekTo: (time: number) => void;
     toggleShuffleMode: () => void;
-    toggleRepeatMode: () => void;
+    toggleRepeatMode: () => void; // Cycle through none -> all -> one -> none
     hasNextTrack: boolean;
     hasPrevTrack: boolean;
 }
 
-// Storage interface
 interface StoredAudioState {
     tracks: MinimalTrack[];
     originalTracks: MinimalTrack[];
-    currentTrackIndex: number;
+    currentTrackIndex: number | null;
     volume: number;
     currentTime: number;
     shuffleMode: boolean;
@@ -62,9 +63,7 @@ interface StoredAudioState {
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
-
-// Max storage size (2MB)
-const MAX_STORAGE_SIZE = 2 * 1024 * 1024;
+const MAX_STORAGE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export const useAudio = () => {
     const context = useContext(AudioContext);
@@ -76,64 +75,90 @@ export const useAudio = () => {
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [tracks, setTracks] = useState<Track[]>([]);
-    const [originalTracks, setOriginalTracks] = useState<Track[]>([]);
-    const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
+    const [originalTracks, setOriginalTracks] = useState<Track[]>([]); // Store original order when shuffling
+    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [volume, setVolume] = useState<number>(0.5);
     const [currentTime, setCurrentTime] = useState<number>(0);
     const [duration, setDuration] = useState<number>(0);
     const [shuffleMode, setShuffleMode] = useState<boolean>(false);
     const [repeatMode, setRepeatMode] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false); // Loading state
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const savedTimeRef = useRef<number>(0);
+    const isSeekingRef = useRef<boolean>(false); // Prevent time updates during seek
+    const currentPlayPromiseRef = useRef<Promise<void> | null>(null); // Track the current play() promise
     const storageFailedRef = useRef<boolean>(false);
+    const lastUpdateTimeRef = useRef<number>(0); // For throttling time updates
 
-    // Convert track to minimal version for storage
+    // --- Utilities ---
+
     const trackToMinimal = useCallback((track: Track): MinimalTrack => ({
         id: track.id,
         title: track.title,
         author: track.author,
-        src: track.src
+        src: track.src,
     }), []);
 
-    // Calculate if there are next/previous tracks
-    const hasNextTrack = useMemo(() =>
-        tracks.length > 1 && currentTrackIndex < tracks.length - 1,
-        [tracks, currentTrackIndex]
-    );
+    const shuffleTracks = useCallback((trackArray: Track[]) => {
+        const shuffled = [...trackArray];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }, []);
 
-    const hasPrevTrack = useMemo(() =>
-        tracks.length > 1 && currentTrackIndex > 0,
-        [tracks, currentTrackIndex]
-    );
+    // Toggle repeat mode
+    const toggleRepeatMode = useCallback(() => {
+        setRepeatMode(prev => !prev);
+    }, []);
 
-    // Safely save to localStorage with size check
+    // --- Derived State ---
+
+    const currentTrack = useMemo<Track | null>(() => {
+        if (currentTrackIndex !== null && tracks[currentTrackIndex]) {
+            return tracks[currentTrackIndex];
+        }
+        return null;
+    }, [tracks, currentTrackIndex]);
+
+    const hasNextTrack = useMemo(() => {
+        if (tracks.length === 0 || currentTrackIndex === null) return false;
+        if (repeatMode === true) return true; // Always possible to loop
+        return currentTrackIndex < tracks.length - 1;
+    }, [tracks, currentTrackIndex, repeatMode]);
+
+    const hasPrevTrack = useMemo(() => {
+        if (tracks.length === 0 || currentTrackIndex === null) return false;
+        if (repeatMode === true) return true; // Always possible to loop
+        return currentTrackIndex > 0;
+    }, [tracks, currentTrackIndex, repeatMode]);
+
+    // --- Storage ---
+
     const safelyStoreState = useCallback((state: StoredAudioState): boolean => {
+        // (Keep your existing safelyStoreState logic - it's good for handling size limits)
         if (storageFailedRef.current) return false;
-
         try {
             const serialized = JSON.stringify(state);
             if (serialized.length > MAX_STORAGE_SIZE) {
-                // If too large, only store critical preferences
                 const minimalState = {
                     currentTrackIndex: state.currentTrackIndex,
                     volume: state.volume,
                     shuffleMode: state.shuffleMode,
                     repeatMode: state.repeatMode,
-                    // Store only current track info
-                    tracks: state.tracks.length > 0 ? [state.tracks[state.currentTrackIndex]] : [],
-                    originalTracks: [],
-                    currentTime: state.currentTime
+                    tracks: state.tracks.length > 0 && state.currentTrackIndex !== null ? [state.tracks[state.currentTrackIndex]] : [],
+                    originalTracks: [], // Don't store original tracks if minimal
+                    currentTime: state.currentTime,
                 };
-
                 const minimalSerialized = JSON.stringify(minimalState);
                 if (minimalSerialized.length > MAX_STORAGE_SIZE) {
-                    // If still too large, store only preferences
                     const prefsOnly = {
                         volume: state.volume,
                         shuffleMode: state.shuffleMode,
-                        repeatMode: state.repeatMode
+                        repeatMode: state.repeatMode,
+                        // maybe store current track ID and time only?
                     };
                     localStorage.setItem('audioPlayerState', JSON.stringify(prefsOnly));
                 } else {
@@ -150,519 +175,644 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
-    // Shuffle an array of tracks
-    const shuffleTracks = useCallback((trackArray: Track[]) => {
-        const shuffled = [...trackArray];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-    }, []);
-
-    // Toggle shuffle mode
-    const toggleShuffleMode = useCallback(() => {
-        setShuffleMode(prev => {
-            const newShuffleMode = !prev;
-
-            if (newShuffleMode) {
-                // Enabling shuffle: store original tracks and shuffle
-                if (originalTracks.length === 0) {
-                    setOriginalTracks([...tracks]);
-                }
-
-                // Get current track
-                const currentTrack = tracks[currentTrackIndex];
-
-                // Shuffle tracks but keep the current track at index 0
-                const tracksWithoutCurrent = tracks.filter((_, idx) => idx !== currentTrackIndex);
-                const shuffledRest = shuffleTracks(tracksWithoutCurrent);
-                setTracks([currentTrack, ...shuffledRest]);
-                setCurrentTrackIndex(0);
-            } else {
-                // Disabling shuffle: restore original track order
-                if (originalTracks.length > 0) {
-                    // Get current track
-                    const currentTrack = tracks[currentTrackIndex];
-
-                    // Find current track in original tracks
-                    const originalIndex = originalTracks.findIndex(t => t.id === currentTrack.id);
-
-                    setTracks([...originalTracks]);
-                    setCurrentTrackIndex(originalIndex >= 0 ? originalIndex : 0);
-                }
-            }
-
-            return newShuffleMode;
-        });
-    }, [tracks, currentTrackIndex, originalTracks, shuffleTracks]);
-
-    // Toggle repeat mode
-    const toggleRepeatMode = useCallback(() => {
-        setRepeatMode(prev => !prev);
-    }, []);
-
-    // Play a specific track, optionally within a new track list
-    const playTrack = useCallback((track: Track, trackList?: Track[]) => {
-        if (trackList) {
-            // Save original track list if shuffle is enabled
-            if (shuffleMode) {
-                setOriginalTracks(trackList);
-
-                // Find track in the list
-                const trackIndex = trackList.findIndex(t => t.id === track.id);
-
-                // Create shuffled version but with selected track first
-                const tracksWithoutSelected = trackList.filter(t => t.id !== track.id);
-                const shuffledRest = shuffleTracks(tracksWithoutSelected);
-
-                setTracks([track, ...shuffledRest]);
-                setCurrentTrackIndex(0);
-            } else {
-                setTracks(trackList);
-                const newIndex = trackList.findIndex(t => t.id === track.id);
-                setCurrentTrackIndex(newIndex >= 0 ? newIndex : 0);
-            }
-        } else {
-            // If no track list is provided, create a single-item list
-            setTracks([track]);
-            setOriginalTracks([track]);
-            setCurrentTrackIndex(0);
-        }
-        setIsPlaying(true);
-    }, [shuffleMode, shuffleTracks]);
-
-    // Play a track at a specific index within a track list
-    const playTrackAtIndex = useCallback((index: number, trackList: Track[]) => {
-        if (shuffleMode) {
-            setOriginalTracks(trackList);
-
-            // Get selected track
-            const selectedTrack = trackList[index];
-
-            // Create shuffled version but with selected track first
-            const tracksWithoutSelected = trackList.filter((_, idx) => idx !== index);
-            const shuffledRest = shuffleTracks(tracksWithoutSelected);
-
-            setTracks([selectedTrack, ...shuffledRest]);
-            setCurrentTrackIndex(0);
-        } else {
-            setTracks(trackList);
-            setCurrentTrackIndex(index);
-        }
-        setIsPlaying(true);
-    }, [shuffleMode, shuffleTracks]);
-
-    // Toggle play/pause
-    const togglePlayPause = useCallback(() => {
-        setIsPlaying(prev => !prev);
-    }, []);
-
-    // Next track
-    const nextTrack = useCallback(() => {
-        if (hasNextTrack) {
-            setCurrentTrackIndex(prev => prev + 1);
-            savedTimeRef.current = 0;
-        } else if (repeatMode && tracks.length > 0) {
-            // If repeat is enabled and we're at the end, go back to the first track
-            setCurrentTrackIndex(0);
-            savedTimeRef.current = 0;
-        }
-    }, [hasNextTrack, repeatMode, tracks.length]);
-
-    // Previous track
-    const prevTrack = useCallback(() => {
-        if (hasPrevTrack) {
-            setCurrentTrackIndex(prev => prev - 1);
-            savedTimeRef.current = 0;
-        } else if (repeatMode && tracks.length > 0) {
-            // If repeat is enabled and we're at the beginning, go to the last track
-            setCurrentTrackIndex(tracks.length - 1);
-            savedTimeRef.current = 0;
-        }
-    }, [hasPrevTrack, repeatMode, tracks.length]);
-
-    // Seek to a specific time
-    const seekTo = useCallback((time: number) => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = time;
-            setCurrentTime(time);
-        }
-    }, []);
-
-    // Clear old or unused localStorage items
     const cleanupStorage = useCallback(() => {
+        // (Keep your existing cleanupStorage logic)
         try {
-            // List of keys to keep
             const keysToKeep = ['audioPlayerState'];
-
+            const keysToRemove: string[] = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key && !keysToKeep.includes(key)) {
-                    localStorage.removeItem(key);
+                    keysToRemove.push(key);
                 }
             }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
         } catch (error) {
             console.error('Error cleaning up storage:', error);
         }
     }, []);
 
-    // Add this preload function to improve initial load performance
-    const preloadAdjacentTracks = useCallback(() => {
-        if (tracks.length <= 1) return;
 
-        // Preload next track if available
-        if (currentTrackIndex < tracks.length - 1) {
-            const nextTrack = tracks[currentTrackIndex + 1];
-            const nextAudio = new Audio();
-            nextAudio.preload = "metadata";
-            nextAudio.src = nextTrack.src;
-
-            // Just load metadata and then release
-            nextAudio.addEventListener('loadedmetadata', () => {
-                nextAudio.src = ""; // Release resources
-            }, { once: true });
-        }
-    }, [tracks, currentTrackIndex]);
-
-    // Add a function to fetch track metadata in your audioContext.tsx
-    const fetchTrackMetadata = async (trackId: string): Promise<{ duration: number, format: string } | null> => {
+    // --- Backend Interaction ---
+    // Consider moving this fetch logic to a dedicated API service file
+    const fetchTrackMetadata = useCallback(async (trackId: string): Promise<{ duration: number, format: string } | null> => {
         try {
             const response = await fetch(`/api/tracks/metadata/${trackId}`);
             if (!response.ok) {
                 console.error('Failed to fetch track metadata:', response.statusText);
                 return null;
             }
-
             const data = await response.json();
-            return {
-                duration: data.duration,
-                format: data.format
-            };
+            // Basic validation
+            if (typeof data.duration !== 'number' || isNaN(data.duration) || !isFinite(data.duration)) {
+                console.warn(`Received invalid duration from metadata endpoint for track ${trackId}:`, data.duration);
+                return null; // Treat invalid duration as not found
+            }
+            return { duration: data.duration, format: data.format };
         } catch (error) {
             console.error('Error fetching track metadata:', error);
             return null;
         }
-    };
+    }, []);
 
-    // Then in your AudioProvider component, add logic to use this:
-    const loadTrackWithMetadata = useCallback(async (track: Track) => {
-        if (!track || !track.id) return;
 
-        // Attempt to get metadata from backend
-        const metadata = await fetchTrackMetadata(track.id);
+    // --- Core Audio Logic ---
 
-        if (metadata && metadata.duration) {
-            // Update duration directly if available from metadata
-            setDuration(metadata.duration);
-        }
-
-        // Continue with normal audio element setup...
-        if (audioRef.current) {
-            audioRef.current.src = track.src;
-
-            if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Play failed:", e));
-            }
-        }
-    }, [isPlaying]);
-
-    // Load saved state from localStorage on initial render
-    useEffect(() => {
-        // Only run on client side
-        if (typeof window !== 'undefined') {
-            try {
-                // First clean up any unused storage
-                cleanupStorage();
-
-                const savedState = localStorage.getItem('audioPlayerState');
-                if (savedState) {
-                    const parsedState = JSON.parse(savedState);
-
-                    // Set volume and preferences regardless of tracks
-                    setVolume(parsedState.volume || 0.5);
-                    setShuffleMode(parsedState.shuffleMode || false);
-                    setRepeatMode(parsedState.repeatMode || false);
-
-                    if (parsedState.tracks && parsedState.tracks.length > 0) {
-                        // Ensure we have valid currentTrackIndex
-                        const safeTrackIndex = Math.min(
-                            parsedState.currentTrackIndex || 0,
-                            parsedState.tracks.length - 1
-                        );
-
-                        setTracks(parsedState.tracks);
-                        setOriginalTracks(parsedState.originalTracks || parsedState.tracks);
-                        setCurrentTrackIndex(safeTrackIndex);
-                        savedTimeRef.current = parsedState.currentTime || 0;
-
-                        // If there was a track playing, set source correctly
-                        if (audioRef.current && parsedState.tracks[safeTrackIndex]) {
-                            audioRef.current.src = parsedState.tracks[safeTrackIndex].src;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading audio state from localStorage:', error);
-            }
-        }
-    }, [cleanupStorage]);
-
-    // Save state to localStorage with throttling
-    useEffect(() => {
-        if (tracks.length > 0) {
-            // Use a timer to prevent excessive writes
-            const saveTimer = setTimeout(() => {
-                const stateToSave: StoredAudioState = {
-                    // Store minimal track info
-                    tracks: tracks.map(trackToMinimal),
-                    originalTracks: originalTracks.length > 0 ? originalTracks.map(trackToMinimal) : [],
-                    currentTrackIndex,
-                    volume,
-                    currentTime,
-                    shuffleMode,
-                    repeatMode
-                };
-
-                safelyStoreState(stateToSave);
-            }, 1000); // 1 second delay
-
-            return () => clearTimeout(saveTimer);
-        }
-    }, [tracks, originalTracks, currentTrackIndex, volume, currentTime, shuffleMode, repeatMode, trackToMinimal, safelyStoreState]);
-
-    // Initialize audio element
-    useEffect(() => {
-        if (!audioRef.current) {
-            audioRef.current = new Audio();
-        }
-
+    const setAudioSource = useCallback(async (track: Track, playWhenReady: boolean) => {
         const audio = audioRef.current;
+        if (!audio || !track) return;
 
-        // Set up event listeners
-        const handleLoadedMetadata = () => setDuration(audio.duration || 0);
-        const handleTimeUpdate = () => setCurrentTime(audio.currentTime || 0);
-        const handleEnded = () => {
-            if (repeatMode) {
-                // Repeat the current track
-                audio.currentTime = 0;
-                audio.play().catch(e => console.error("Play failed:", e));
-            } else if (hasNextTrack) {
-                nextTrack();
+        setIsLoading(true);
+        setCurrentTime(0); // Reset time for new track
+        setDuration(0); // Reset duration
+
+        // Pause current playback *before* changing source
+        if (!audio.paused) {
+            audio.pause();
+        }
+
+        // Cancel any pending play promise
+        currentPlayPromiseRef.current = null;
+
+        // Attempt to fetch duration from backend first
+        const metadata = await fetchTrackMetadata(track.id);
+        if (metadata?.duration) {
+            console.log(`Using duration from metadata: ${metadata.duration}`);
+            setDuration(metadata.duration);
+        } else {
+            console.log(`Metadata duration not available for ${track.id}, will rely on 'loadedmetadata' event.`);
+        }
+
+
+        // Set the source and preload metadata
+        // IMPORTANT: Setting src implicitly calls load() and aborts current playback/loading
+        audio.src = track.src;
+        audio.preload = "metadata"; // Start loading metadata immediately
+
+        // Reset event listeners (or ensure they are added only once in setup)
+        // We rely on the listeners set up in the initial useEffect
+
+        // IMPORTANT: The 'loadedmetadata' and 'canplay' events will fire naturally.
+        // The play action will be triggered by the useEffect watching isPlaying and currentTrack.
+
+        // If playWhenReady is true, we set isPlaying, and the effect will handle the actual play() call.
+        if (playWhenReady) {
+            setIsPlaying(true);
+        } else {
+            setIsPlaying(false); // Ensure state reflects that we are not playing yet
+        }
+
+        // We don't explicitly call audio.load() here because setting src does it.
+        // We don't explicitly call audio.play() here; the isPlaying effect handles it.
+        // setIsLoading(false) will be handled by 'canplay' or 'error' events.
+
+    }, [fetchTrackMetadata]);
+
+
+    // --- Playback Control ---
+
+    const seekTo = useCallback((time: number) => {
+        const audio = audioRef.current;
+        if (audio && isFinite(time)) { // Check if time is a valid number
+            const targetTime = Math.max(0, Math.min(time, duration || 0)); // Clamp time
+            console.log(`Seeking to: ${targetTime} (duration: ${duration})`);
+            isSeekingRef.current = true; // Signal start of seek
+            audio.currentTime = targetTime;
+            setCurrentTime(targetTime); // Update state immediately for responsiveness
+
+            // No need to manually call play/pause here, browser handles it during seek
+            // isSeekingRef will be reset in the 'seeked' event listener
+        }
+    }, [duration]);
+
+    const playTrack = useCallback((track: Track, trackList?: Track[]) => {
+        let newIndex = 0;
+        let newTracks = tracks;
+        let newOriginalTracks = originalTracks;
+
+        if (trackList) {
+            newOriginalTracks = [...trackList]; // Always update original list
+            if (shuffleMode) {
+                // Shuffle the new list, keeping the selected track first
+                const selectedTrack = trackList.find(t => t.id === track.id) || track; // Find or use the passed track
+                const others = trackList.filter(t => t.id !== selectedTrack.id);
+                newTracks = [selectedTrack, ...shuffleTracks(others)];
+                newIndex = 0; // Selected track is now at index 0
             } else {
+                newTracks = [...trackList];
+                newIndex = newTracks.findIndex(t => t.id === track.id);
+                if (newIndex === -1) newIndex = 0; // Fallback
+            }
+        } else {
+            // Playing a single track not part of the current list context
+            // Treat it as a new list of one
+            newTracks = [track];
+            newOriginalTracks = [track];
+            newIndex = 0;
+            setShuffleMode(false); // Turn off shuffle for single track play
+        }
+
+        setTracks(newTracks);
+        setOriginalTracks(newOriginalTracks); // Update original list reference
+
+        // If the track is already the current one, just play (or handle toggle)
+        if (currentTrackIndex === newIndex && audioRef.current && !audioRef.current.paused) {
+            // Already playing the target track
+            seekTo(0); // Restart the track maybe? Or just do nothing? Let's restart.
+            // If you don't want to restart, just return here.
+        } else {
+            setCurrentTrackIndex(newIndex);
+            // setAudioSource will be called by the useEffect watching currentTrackIndex
+            // We need to ensure isPlaying is set correctly for that effect.
+            // Set isPlaying to true here to signal intent to play.
+            setIsPlaying(true);
+        }
+
+    }, [tracks, originalTracks, currentTrackIndex, shuffleMode, shuffleTracks, seekTo]); // Added seekTo dependency
+
+    const playTrackAtIndex = useCallback((index: number, trackList: Track[]) => {
+        if (index < 0 || index >= trackList.length) return; // Invalid index
+
+        let newTracks = tracks;
+        let newOriginalTracks = originalTracks;
+        let targetIndex = index;
+
+        // Update internal lists regardless of shuffle
+        newOriginalTracks = [...trackList];
+
+        if (shuffleMode) {
+            // If shuffle is on, shuffle the list but make the selected track the *first* one
+            const selectedTrack = trackList[index];
+            const others = trackList.filter((_, idx) => idx !== index);
+            newTracks = [selectedTrack, ...shuffleTracks(others)];
+            targetIndex = 0; // The selected track is now at index 0
+        } else {
+            newTracks = [...trackList];
+            targetIndex = index;
+        }
+
+        setTracks(newTracks);
+        setOriginalTracks(newOriginalTracks);
+
+        if (currentTrackIndex === targetIndex && audioRef.current && !audioRef.current.paused) {
+            seekTo(0); // Restart if already playing the target track
+        } else {
+            setCurrentTrackIndex(targetIndex);
+            // Signal intent to play
+            setIsPlaying(true);
+        }
+
+    }, [tracks, originalTracks, currentTrackIndex, shuffleMode, shuffleTracks, seekTo]); // Added seekTo dependency
+
+
+    const togglePlayPause = useCallback(async () => {
+        const audio = audioRef.current;
+        if (!audio || !currentTrack) return;
+
+        if (isPlaying) {
+            audio.pause();
+            setIsPlaying(false);
+        } else {
+            // If source isn't set or ready, setting isPlaying will trigger load/play via effect
+            if (!audio.src || audio.readyState < HTMLMediaElement.HAVE_METADATA) {
+                console.log("Audio not ready, setting isPlaying to trigger load.");
+                setIsPlaying(true); // Let the effect handle playing when ready
+            } else {
+                setIsLoading(true); // Show loading indicator briefly
+                try {
+                    // Attempt to play
+                    currentPlayPromiseRef.current = audio.play();
+                    await currentPlayPromiseRef.current;
+                    setIsPlaying(true);
+                    // setIsLoading(false); // Handled by 'playing' event
+                } catch (error: any) {
+                    console.error("Toggle Play failed:", error);
+                    if (error.name !== 'AbortError') {
+                        // Handle unexpected errors (e.g., user interaction required)
+                        setIsPlaying(false); // Ensure state is consistent
+                    }
+                    // AbortError might happen if we rapidly toggle, ignore it here
+                    setIsLoading(false); // Ensure loading stops on error
+                } finally {
+                    currentPlayPromiseRef.current = null;
+                }
+            }
+        }
+    }, [isPlaying, currentTrack]);
+
+    const nextTrack = useCallback(() => {
+        if (tracks.length === 0 || currentTrackIndex === null) return;
+
+        let nextIndex: number | null = null;
+
+        if (currentTrackIndex < tracks.length - 1) {
+            nextIndex = currentTrackIndex + 1;
+        } else if (repeatMode === true) {
+            nextIndex = 0; // Loop back to start
+        }
+
+        if (nextIndex !== null) {
+            setCurrentTrackIndex(nextIndex);
+            setIsPlaying(true); // Auto-play next track
+        } else {
+            // End of list and no repeat 'all'
+            setIsPlaying(false);
+            // Optionally seek to 0 if you want the player to reset
+            // seekTo(0);
+        }
+    }, [tracks, currentTrackIndex, repeatMode]); // Removed seekTo dependency here
+
+    const prevTrack = useCallback(() => {
+        if (tracks.length === 0 || currentTrackIndex === null) return;
+
+        let prevIndex: number | null = null;
+
+        // If track has played for more than ~3 seconds, restart it instead of going previous
+        if (audioRef.current && audioRef.current.currentTime > 3) {
+            seekTo(0);
+            setIsPlaying(true); // Ensure it plays from start
+            return;
+        }
+
+        if (currentTrackIndex > 0) {
+            prevIndex = currentTrackIndex - 1;
+        } else if (repeatMode === true) {
+            prevIndex = tracks.length - 1; // Loop back to end
+        }
+
+        if (prevIndex !== null) {
+            setCurrentTrackIndex(prevIndex);
+            setIsPlaying(true); // Auto-play previous track
+        } else {
+            // Start of list and no repeat 'all'
+            // Optionally seek to 0 or do nothing
+            seekTo(0);
+            setIsPlaying(true); // Re-play the first track from start
+        }
+    }, [tracks, currentTrackIndex, repeatMode, seekTo]); // Added seekTo dependency
+
+
+    const setVolumeCallback = useCallback((value: number) => {
+        const newVolume = Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
+        setVolume(newVolume);
+        if (audioRef.current) {
+            audioRef.current.volume = newVolume;
+        }
+    }, []); // No dependencies needed
+
+    const toggleShuffleMode = useCallback(() => {
+        const newShuffleMode = !shuffleMode;
+        setShuffleMode(newShuffleMode);
+
+        if (!currentTrack) {
+            // If nothing is playing, just toggle the mode
+            setOriginalTracks(newShuffleMode ? [...tracks] : []); // Store originals if enabling shuffle
+            return;
+        }
+
+        // If a track is playing or selected
+        if (newShuffleMode) {
+            // Enabling shuffle
+            setOriginalTracks([...tracks]); // Store current (potentially already shuffled) list as original reference *before* reshuffling
+            const current = currentTrack; // Get the currently playing track object
+            const others = tracks.filter(t => t.id !== current.id);
+            const shuffledOthers = shuffleTracks(others);
+            const newShuffledList = [current, ...shuffledOthers];
+            setTracks(newShuffledList);
+            setCurrentTrackIndex(0); // Current track is now at index 0
+        } else {
+            // Disabling shuffle
+            if (originalTracks.length > 0) {
+                // Restore original order
+                const current = currentTrack;
+                const originalIndex = originalTracks.findIndex(t => t.id === current.id);
+                setTracks([...originalTracks]);
+                setCurrentTrackIndex(originalIndex >= 0 ? originalIndex : 0);
+            }
+            // Clear original tracks reference if disabling shuffle
+            setOriginalTracks([]);
+        }
+    }, [shuffleMode, tracks, currentTrack, originalTracks, shuffleTracks]);
+
+    // --- Effects ---
+
+    // Initialize Audio Element & Base Listeners
+    useEffect(() => {
+        audioRef.current = new Audio();
+        const audio = audioRef.current;
+        audio.volume = volume; // Set initial volume
+
+        // --- Event Listeners ---
+
+        const handleLoadedMetadata = () => {
+            console.log("Event: loadedmetadata");
+            // Only update duration if it wasn't set by backend metadata or is invalid
+            if (!duration || !isFinite(duration) || duration === 0) {
+                const audioDuration = audio.duration;
+                if (isFinite(audioDuration) && audioDuration > 0) {
+                    console.log(`Setting duration from 'loadedmetadata': ${audioDuration}`);
+                    setDuration(audioDuration);
+                } else {
+                    console.warn(`Invalid duration on 'loadedmetadata': ${audioDuration}`);
+                    // Maybe try fetching metadata again here?
+                }
+            }
+        };
+
+        const handleCanPlay = () => {
+            console.log("Event: canplay");
+            setIsLoading(false); // Ready to play (at least the start)
+        };
+
+        const handlePlay = () => {
+            console.log("Event: play");
+            // This might fire before the actual play starts if there's buffering
+            // We set isPlaying optimistically, but 'playing' is more reliable
+        };
+
+        const handlePlaying = () => {
+            console.log("Event: playing");
+            setIsPlaying(true); // Confirmed playing
+            setIsLoading(false);
+        };
+
+        const handlePause = () => {
+            console.log("Event: pause");
+            // Don't set isPlaying false if we paused due to seeking
+            if (!isSeekingRef.current) {
                 setIsPlaying(false);
             }
         };
 
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('ended', handleEnded);
-
-        // Set volume from state
-        audio.volume = volume;
-
-        return () => {
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('ended', handleEnded);
-        };
-    }, [repeatMode, hasNextTrack, nextTrack, volume]);
-
-    // Effect for updating track source
-    useEffect(() => {
-        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            const currentTrack = tracks[currentTrackIndex];
-
-            if (audioRef.current && currentTrack) {
-                const audio = audioRef.current;
-
-                // Save current time of previous track if it's the same track
-                if (audio.src.includes(currentTrack.src)) {
-                    savedTimeRef.current = audio.currentTime;
-                } else {
-                    savedTimeRef.current = 0;
-                }
-
-                // Update source
-                audio.src = currentTrack.src;
-
-                // After source is updated, set the saved time
-                audio.addEventListener('loadedmetadata', () => {
-                    audio.currentTime = savedTimeRef.current;
-                    if (isPlaying) {
-                        audio.play().catch(e => console.error("Play failed:", e));
-                    }
-                }, { once: true });
-            }
-        }
-    }, [tracks, currentTrackIndex]);
-
-    useEffect(() => {
-        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            const currentTrack = tracks[currentTrackIndex];
-
-            if (audioRef.current && currentTrack) {
-                const audio = audioRef.current;
-
-                // Save current time of previous track if it's the same track
-                if (audio.src && audio.src.includes(currentTrack.src)) {
-                    savedTimeRef.current = audio.currentTime;
-                } else {
-                    savedTimeRef.current = 0;
-                }
-
-                // Force load metadata 
-                const handleCanPlayThrough = () => {
-                    // Ensure duration is set correctly
-                    if (isNaN(audio.duration) || !isFinite(audio.duration)) {
-                        console.warn("Invalid duration detected, trying to fix...");
-
-                        // Force metadata loading by playing a tiny bit then pausing
-                        audio.volume = 0; // Mute during this operation
-                        const playPromise = audio.play();
-
-                        if (playPromise !== undefined) {
-                            playPromise
-                                .then(() => {
-                                    // Successfully started playing
-                                    setTimeout(() => {
-                                        audio.pause();
-                                        audio.volume = volume; // Restore volume
-                                        setDuration(audio.duration || 0);
-                                        // Restore playback state
-                                        if (isPlaying) {
-                                            audio.play().catch(e => console.error("Play resumption failed:", e));
-                                        }
-                                    }, 500); // Try getting duration after 500ms
-                                })
-                                .catch(e => {
-                                    console.error("Metadata load attempt failed:", e);
-                                    audio.volume = volume; // Restore volume even on failure
-                                });
-                        }
-                    } else {
-                        setDuration(audio.duration);
-                    }
-                };
-
-                // Enhanced metadata loading
-                const loadMetadata = () => {
-                    setDuration(audio.duration || 0);
-
-                    // If duration is invalid, schedule a retry
-                    if (isNaN(audio.duration) || !isFinite(audio.duration)) {
-                        setTimeout(() => {
-                            if (isNaN(audio.duration) || !isFinite(audio.duration)) {
-                                console.warn("Duration still invalid after initial load, trying again");
-                                // Additional retry method
-                                audio.load(); // Reload the audio
-                            } else {
-                                setDuration(audio.duration);
-                            }
-                        }, 1000);
-                    }
-
-                    // After metadata is loaded, set the saved time and handle play state
-                    audio.currentTime = savedTimeRef.current;
-                    if (isPlaying) {
-                        audio.play().catch(e => console.error("Play failed:", e));
-                    }
-                };
-
-                // Update source
-                audio.src = currentTrack.src;
-                audio.preload = "metadata"; // Ensure metadata is loaded
-
-                // Set up enhanced event listeners
-                audio.addEventListener('loadedmetadata', loadMetadata, { once: true });
-                audio.addEventListener('canplaythrough', handleCanPlayThrough, { once: true });
-
-                return () => {
-                    audio.removeEventListener('loadedmetadata', loadMetadata);
-                    audio.removeEventListener('canplaythrough', handleCanPlayThrough);
-                };
-            }
-        }
-    }, [tracks, currentTrackIndex, isPlaying, volume]);
-
-    // Effect for volume changes
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-        }
-    }, [volume]);
-
-    // Call this function when changing tracks
-    // Add this to your track change effect
-    useEffect(() => {
-        if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
-            const currentTrack = tracks[currentTrackIndex];
-            loadTrackWithMetadata(currentTrack);
-        }
-    }, [tracks, currentTrackIndex, loadTrackWithMetadata]);
-
-    // --- Performance Optimization ---
-
-    // Add this to your AudioContext component
-
-    // Throttled time update to reduce CPU usage
-    useEffect(() => {
-        if (!audioRef.current) return;
-
-        const audio = audioRef.current;
-        let lastUpdateTime = 0;
-
         const handleTimeUpdate = () => {
+            // Throttle updates
             const now = Date.now();
-            // Update state at most every 250ms to reduce render frequency
-            if (now - lastUpdateTime > 250) {
+            if (!isSeekingRef.current && now - lastUpdateTimeRef.current > 250) { // 250ms throttle
                 setCurrentTime(audio.currentTime || 0);
-                lastUpdateTime = now;
+                lastUpdateTimeRef.current = now;
             }
         };
 
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-
-        return () => {
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
+        const handleDurationChange = () => {
+            console.log("Event: durationchange");
+            const audioDuration = audio.duration;
+            if (isFinite(audioDuration) && audioDuration > 0) {
+                // Update duration if it changes (e.g., live streams or late loading)
+                if (duration !== audioDuration) {
+                    console.log(`Updating duration from 'durationchange': ${audioDuration}`);
+                    setDuration(audioDuration);
+                }
+            }
         };
-    }, []);
 
-    // Call preloadAdjacentTracks in your track change effect
-    useEffect(() => {
-        preloadAdjacentTracks();
-    }, [currentTrackIndex, preloadAdjacentTracks]);
+        const handleEnded = () => {
+            console.log("Event: ended");
+            if (repeatMode === true) {
+                console.log("Repeat One: Restarting track");
+                seekTo(0);
+                audio.play().catch(e => console.error("Repeat play failed:", e));
+            } else {
+                console.log("Playing next track on ended");
+                nextTrack(); // Handles repeat 'all' logic internally
+            }
+        };
 
-    // Enhanced error handling for audio playback
-    useEffect(() => {
-        if (!audioRef.current) return;
-
-        const audio = audioRef.current;
+        const handleSeeked = () => {
+            console.log("Event: seeked");
+            isSeekingRef.current = false; // Seeking finished
+            // If we were playing before seeking, resume playback
+            if (isPlaying) {
+                audio.play().catch(e => console.error("Play after seek failed:", e));
+            }
+            // Re-enable throttled time updates
+            lastUpdateTimeRef.current = 0; // Allow immediate update after seek
+            setCurrentTime(audio.currentTime || 0); // Ensure UI is exactly correct
+        };
 
         const handleError = (e: ErrorEvent) => {
-            console.error("Audio playback error:", e);
-
-            // Try to recover from error
-            setTimeout(() => {
-                if (audioRef.current) {
-                    audioRef.current.load();
-                    if (isPlaying) {
-                        audioRef.current.play().catch(e => console.error("Recovery play failed:", e));
-                    }
-                }
-            }, 1000);
+            console.error("Audio Error:", e);
+            // Handle specific errors if needed
+            // e.target.error.code gives error type (e.g., MEDIA_ERR_SRC_NOT_SUPPORTED)
+            setIsLoading(false);
+            setIsPlaying(false);
+            // Maybe try to skip to the next track?
+            // nextTrack(); // Be careful with error loops
         };
 
+        // Add listeners
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.addEventListener('durationchange', handleDurationChange);
+        audio.addEventListener('canplay', handleCanPlay);
+        audio.addEventListener('play', handlePlay);
+        audio.addEventListener('playing', handlePlaying);
+        audio.addEventListener('pause', handlePause);
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('ended', handleEnded);
+        audio.addEventListener('seeked', handleSeeked);
         audio.addEventListener('error', handleError);
 
+        // Cleanup
         return () => {
+            console.log("Cleaning up Audio Element and Listeners");
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            audio.removeEventListener('durationchange', handleDurationChange);
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('play', handlePlay);
+            audio.removeEventListener('playing', handlePlaying);
+            audio.removeEventListener('pause', handlePause);
+            audio.removeEventListener('timeupdate', handleTimeUpdate);
+            audio.removeEventListener('ended', handleEnded);
+            audio.removeEventListener('seeked', handleSeeked);
             audio.removeEventListener('error', handleError);
+            audio.pause(); // Ensure audio stops
+            audio.src = ""; // Release resources
+            audioRef.current = null;
         };
-    }, [isPlaying]);
+        // Run only once on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Memoize context value to prevent unnecessary re-renders
+
+    // Effect to handle track changes (when currentTrackIndex changes)
+    useEffect(() => {
+        if (currentTrack) {
+            console.log(`Track Changed: Index ${currentTrackIndex}, Title: ${currentTrack.title}`);
+            // Call setAudioSource, pass 'isPlaying' state to indicate if it should play immediately
+            setAudioSource(currentTrack, isPlaying);
+        } else {
+            // No track selected, reset audio element
+            const audio = audioRef.current;
+            if (audio) {
+                audio.pause();
+                audio.src = "";
+            }
+            setIsPlaying(false);
+            setCurrentTime(0);
+            setDuration(0);
+            setIsLoading(false);
+        }
+        // Trigger this effect *only* when the track index changes.
+        // isPlaying is passed to setAudioSource to decide if it should play *after* loading.
+        // setAudioSource handles the internal logic based on that.
+    }, [currentTrackIndex, setAudioSource]); // Watch currentTrackIndex
+
+
+    // Effect to handle play/pause state changes initiated externally (e.g., togglePlayPause)
+    // This effect ensures the audio element's state matches the React state.
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio || !currentTrack) return; // No audio element or track loaded
+
+        console.log(`Play/Pause Effect: isPlaying=${isPlaying}, audio.paused=${audio.paused}, readyState=${audio.readyState}`);
+
+        if (isPlaying) {
+            // We want to play
+            if (audio.paused) {
+                // Only play if ready enough (or let the browser handle waiting if already loading)
+                if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA || audio.readyState === HTMLMediaElement.HAVE_NOTHING && audio.src) {
+                    console.log("Attempting to play...");
+                    setIsLoading(true); // Show loading until 'playing' event
+                    currentPlayPromiseRef.current = audio.play();
+                    currentPlayPromiseRef.current?.then(() => {
+                        console.log("Play command successful (promise resolved)");
+                        // 'playing' event will set isLoading false
+                    }).catch(error => {
+                        console.error("Effect Play failed:", error);
+                        if (error.name !== 'AbortError') {
+                            setIsPlaying(false); // Revert state if play fails unexpectedly
+                        }
+                        setIsLoading(false); // Stop loading indicator on error
+                    }).finally(() => {
+                        currentPlayPromiseRef.current = null;
+                    });
+                } else {
+                    console.log("Audio not ready enough to play yet, waiting for events...");
+                    setIsLoading(true); // Ensure loading is shown while waiting
+                }
+            } else {
+                // Already playing, ensure loading indicator is off
+                setIsLoading(false);
+            }
+        } else {
+            // We want to pause
+            if (!audio.paused) {
+                console.log("Attempting to pause...");
+                audio.pause();
+            }
+            // Ensure loading is off when paused explicitly
+            setIsLoading(false);
+        }
+
+        // This effect reacts to changes in `isPlaying` state and `currentTrack` (to handle cases where track changes but play state should persist)
+    }, [isPlaying, currentTrack]);
+
+
+    // Load state from localStorage on initial render
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                cleanupStorage();
+                const savedState = localStorage.getItem('audioPlayerState');
+                if (savedState) {
+                    const parsedState: Partial<StoredAudioState> = JSON.parse(savedState);
+
+                    setVolume(parsedState.volume ?? 0.5);
+                    setShuffleMode(parsedState.shuffleMode ?? false);
+                    setRepeatMode(parsedState.repeatMode ?? false);
+
+                    if (parsedState.tracks && parsedState.tracks.length > 0 && parsedState.currentTrackIndex !== null && parsedState.currentTrackIndex! >= 0) {
+                        const loadedTracks = parsedState.tracks as Track[]; // Assume structure matches for now
+                        const loadedOriginals = (parsedState.originalTracks as Track[] | undefined) ?? [];
+                        const safeIndex = Math.min(parsedState.currentTrackIndex!, loadedTracks.length - 1);
+
+                        setTracks(loadedTracks);
+                        setOriginalTracks(loadedOriginals); // Restore original tracks if available
+                        setCurrentTrackIndex(safeIndex);
+                        // Don't set isPlaying = true here. Let user initiate playback.
+                        // Restore time *after* track loads
+                        const restoredTime = parsedState.currentTime ?? 0;
+                        if (audioRef.current && loadedTracks[safeIndex]) {
+                            // Preload metadata for the restored track
+                            const audio = audioRef.current;
+                            audio.src = loadedTracks[safeIndex].src;
+                            audio.preload = "metadata";
+                            // Add temporary listener to set time after metadata loads
+                            const setRestoredTime = () => {
+                                if (audioRef.current && isFinite(restoredTime) && isFinite(audioRef.current.duration)) {
+                                    audioRef.current.currentTime = Math.min(restoredTime, audioRef.current.duration);
+                                    setCurrentTime(audioRef.current.currentTime); // Update state too
+                                }
+                                audioRef.current?.removeEventListener('loadedmetadata', setRestoredTime);
+                            };
+                            audio.addEventListener('loadedmetadata', setRestoredTime, { once: true });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading audio state:', error);
+                localStorage.removeItem('audioPlayerState'); // Clear corrupted state
+            }
+        }
+    }, [cleanupStorage]); // Run only once on mount
+
+
+    // Save state to localStorage (throttled)
+    useEffect(() => {
+        // Throttle saving state
+        const saveTimer = setTimeout(() => {
+            if (tracks.length > 0 && currentTrackIndex !== null) {
+                const stateToSave: StoredAudioState = {
+                    tracks: tracks.map(trackToMinimal),
+                    originalTracks: originalTracks.map(trackToMinimal),
+                    currentTrackIndex,
+                    volume,
+                    // Use the actual audio element time for saving if available, otherwise state
+                    currentTime: audioRef.current?.currentTime ?? currentTime,
+                    shuffleMode,
+                    repeatMode,
+                };
+                safelyStoreState(stateToSave);
+            } else {
+                // Save only preferences if no track is loaded
+                const prefsOnly = { volume, shuffleMode, repeatMode };
+                localStorage.setItem('audioPlayerState', JSON.stringify(prefsOnly));
+            }
+        }, 1000); // Save every 1 second after changes settle
+
+        return () => clearTimeout(saveTimer);
+    }, [
+        tracks, originalTracks, currentTrackIndex, volume, currentTime, // Include currentTime to trigger save after seeking/updates
+        shuffleMode, repeatMode, trackToMinimal, safelyStoreState
+    ]);
+
+
+    // Preloading (Simple metadata preloading for next track)
+    useEffect(() => {
+        if (!currentTrack || currentTrackIndex === null || tracks.length <= 1 || currentTrackIndex >= tracks.length - 1) {
+            return; // No next track or not applicable
+        }
+
+        const nextIndex = currentTrackIndex + 1;
+        const nextTrackData = tracks[nextIndex];
+
+        if (nextTrackData) {
+            // Use a temporary Audio object for preloading metadata
+            const preloader = new Audio();
+            preloader.preload = "metadata";
+            preloader.src = nextTrackData.src;
+            console.log(`Preloading metadata for next track: ${nextTrackData.title}`);
+
+            // No need to keep the preloader object around after setting src
+        }
+
+    }, [tracks, currentTrackIndex, currentTrack]); // Re-run when track changes
+
+
+    // --- Context Value ---
+
     const contextValue = useMemo(() => ({
         tracks,
+        currentTrack,
         currentTrackIndex,
         isPlaying,
         volume,
@@ -670,40 +820,29 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         duration,
         shuffleMode,
         repeatMode,
+        isLoading,
         playTrack,
         playTrackAtIndex,
         togglePlayPause,
         nextTrack,
         prevTrack,
-        setVolume,
+        setVolume: setVolumeCallback, // Use the specific callback here
         seekTo,
         toggleShuffleMode,
         toggleRepeatMode,
         hasNextTrack,
-        hasPrevTrack
-    }), [
-        tracks,
-        currentTrackIndex,
-        isPlaying,
-        volume,
-        currentTime,
-        duration,
-        shuffleMode,
-        repeatMode,
-        playTrack,
-        playTrackAtIndex,
-        togglePlayPause,
-        nextTrack,
-        prevTrack,
-        hasNextTrack,
         hasPrevTrack,
-        toggleShuffleMode,
-        toggleRepeatMode
+    }), [
+        tracks, currentTrack, currentTrackIndex, isPlaying, volume, currentTime, duration,
+        shuffleMode, repeatMode, isLoading, playTrack, playTrackAtIndex, togglePlayPause,
+        nextTrack, prevTrack, setVolumeCallback, seekTo, toggleShuffleMode, toggleRepeatMode,
+        hasNextTrack, hasPrevTrack
     ]);
 
     return (
         <AudioContext.Provider value={contextValue}>
             {children}
+            {/* We don't render the <audio> tag directly here, it's managed by the ref */}
         </AudioContext.Provider>
     );
 };

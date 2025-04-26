@@ -8,6 +8,7 @@ import { useToken } from '@/app/providers/TokenProvider';
 interface LikeButtonProps {
   trackId: string;
   size?: 'sm' | 'md' | 'lg';
+  icon?: boolean;
   className?: string;
   onLikeStateChange?: (isLiked: boolean) => void;
 }
@@ -15,6 +16,7 @@ interface LikeButtonProps {
 export function LikeButton({
   trackId,
   size = 'md',
+  icon = true,
   className = '',
   onLikeStateChange,
 }: LikeButtonProps) {
@@ -89,13 +91,15 @@ export function LikeButton({
       aria-label={isLiked ? 'Unlike song' : 'Like song'}
       title={isLiked ? 'Unlike song' : 'Like song'}
     >
-      <Heart
-        className={`${sizeClass} ${
-          isLiked
-            ? 'fill-red-500 text-red-500'
-            : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'
-        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-      />
+      {icon ? (
+        <Heart
+          className={`${sizeClass} ${isLiked
+              ? 'fill-red-500 text-red-500'
+              : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        />) : (
+        <span>Добавить в понравившееся</span>
+      )}
     </Button>
   );
 };
