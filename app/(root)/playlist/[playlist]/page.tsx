@@ -108,7 +108,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const handlePlayPauseClick = () => {
         if (playlistData && playlistData.tracks.length > 0) {
             // Check if we're already playing this playlist
-            const currentTrack = currentTracks[currentTrackIndex];
+            const currentTrack = currentTracks[currentTrackIndex!];
             const isCurrentPlaylist = currentTrack &&
                 playlistData.tracks.some(track => track.id === currentTrack.id);
 
@@ -125,7 +125,7 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
     const isPlaylistPlaying = () => {
         if (!isPlaying || !playlistData || playlistData.tracks.length === 0) return false;
 
-        const currentTrack = currentTracks[currentTrackIndex];
+        const currentTrack = currentTracks[currentTrackIndex!];
         return currentTrack && playlistData.tracks.some(track => track.id === currentTrack.id);
     };
 
