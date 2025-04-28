@@ -30,9 +30,9 @@ export function LikeButton({
 
   // Fetch like status only if authenticated
   useEffect(() => {
-    const fetchLikeStatus = async () => {
-      if (!trackId || !isTokenExist) return;
+    if (!trackId || !isTokenExist) return;
 
+    const fetchLikeStatus = async () => {
       try {
         const res = await fetch('/api/user/isSongLiked', {
           method: 'POST',
@@ -43,8 +43,6 @@ export function LikeButton({
         if (res.ok) {
           const data = await res.json();
           setIsLiked(data.isLiked);
-        } else {
-          console.error('Failed to fetch like status');
         }
       } catch (err) {
         console.error('Error fetching like status:', err);
@@ -72,8 +70,6 @@ export function LikeButton({
         const newLikedState = !isLiked;
         setIsLiked(newLikedState);
         onLikeStateChange?.(newLikedState);
-      } else {
-        console.error(`Failed to ${isLiked ? 'unlike' : 'like'} the song`);
       }
     } catch (err) {
       console.error('Error toggling like:', err);
@@ -94,12 +90,23 @@ export function LikeButton({
       {icon ? (
         <Heart
           className={`${sizeClass} ${isLiked
+            ? 'fill-red-500 text-red-500'
+            : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        />
+      ) : (
+        <div className="flex flex-row items-center gap-4">
+          <span>
+            {isLiked ? 'Удалить из понравившихся' : 'Добавить в понравившееся'}
+          </span>
+          <Heart
+            className={`${sizeClass} ${isLiked
               ? 'fill-red-500 text-red-500'
               : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        />) : (
-        <span>Добавить в понравившееся</span>
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+        </div>
       )}
     </Button>
   );
-};
+}

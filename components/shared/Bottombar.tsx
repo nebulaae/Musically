@@ -7,8 +7,6 @@ import {
     Home,
     Search,
     LibraryBig,
-    Heart,
-    Settings,
     UserRound
 } from "lucide-react";
 
@@ -34,12 +32,6 @@ export const Bottombar = () => {
             url: "/playlist",
             icon: <LibraryBig />,
         },
-        /*{
-            id: 5,
-            title: "Настройки",
-            url: "/settings",
-            icon: <Settings />,
-        },*/
         {
             id: 4,
             title: "Профиль",
@@ -57,7 +49,7 @@ export const Bottombar = () => {
                             href={link.url}
                             key={link.id}
                             className={`relative flex flex-col items-center gap-2 rounded-lg p-2 sm:flex-1 sm:px-2 sm:py-2.5 ${pathname === link.url
-                                    ? "purple-text mb-2 before:absolute before:-bottom-1 before:h-1.5 before:w-1.5 before:rounded-full before:bg-purple-800"
+                                    ? "purple-text"
                                     : ""}`}
                         >
                             {link.icon}

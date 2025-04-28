@@ -44,11 +44,11 @@ export const LoginPage = () => {
             });
 
             const data = await response.json();
-            
+
             if (response.ok) {
                 toast.success("Успешная авторизация!");
-                window.location.reload();
-                router.push("/");
+                router.push('/')
+                router.refresh()
             } else {
                 toast.error(data.message || "Не удалось авторизоваться. Неверные данные или пароль.");
             }

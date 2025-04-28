@@ -1,21 +1,16 @@
-'use client'
+"use client"
 
-import dynamic from 'next/dynamic';
+import { Button } from "@/components/ui/button";
+import { PlaylistDrawer } from './PlaylistDrawer';
+import { EllipsisVertical, LibraryBig } from 'lucide-react';
 
 import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { EllipsisVertical } from 'lucide-react';
 import { useToken } from '@/app/providers/TokenProvider';
 
 interface PlaylistProps {
   trackId: string;
   icon?: boolean
-}
-
-const DynamicPlaylistDrawer = dynamic(() => import('./PlaylistDrawer'), {
-  loading: () => null,
-  ssr: false,
-});
+};
 
 export const PlaylistActions = ({
   trackId,
@@ -28,20 +23,27 @@ export const PlaylistActions = ({
     <>
       <Button
         variant="ghost"
-        size="icon"
-        className="rounded-full focus-visible:ring-0"
+        size={icon ? "icon" : "default"}
+        className={icon ? "rounded-full focus-visible:ring-0" : ""}
         onClick={() => setDrawerOpen(true)}
         disabled={!isTokenExist}
       >
         {icon ? (
           <EllipsisVertical className="h-6 w-6" />
         ) : (
-          <span>Добавить в плейлист</span>
+          <span className="flex flex-row items-start gap-4">
+            Добавить в плейлист
+            <LibraryBig />
+          </span>
         )}
         <span className="sr-only">Добавить в плейлист</span>
       </Button>
 
-      <DynamicPlaylistDrawer open={drawerOpen} onOpenChange={setDrawerOpen} trackId={trackId} />
+      <PlaylistDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        trackId={trackId}
+      />
     </>
   );
 };

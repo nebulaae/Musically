@@ -3,41 +3,42 @@
 import dynamic from 'next/dynamic';
 
 import { useState } from 'react';
+import { useToken } from '@/app/providers/TokenProvider';
+
 import { CirclePlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+
+const LikeButton = dynamic(() => import('@/components/functions/LikeButton').then((mod) => mod.LikeButton), { ssr: false });
+const PlaylistActions = dynamic(() => import('@/components/functions/PlaylistActions').then((mod) => mod.PlaylistActions), { ssr: false });
 
 export const TrackActions = ({
     trackId
 }: {
     trackId: string;
 }) => {
+    const { isTokenExist } = useToken();
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleClose = () => setIsOpen(false);
-
-    const LikeButton = dynamic(() => import('@/components/functions/LikeButton').then((mod) => mod.LikeButton), { ssr: false });
-    const PlaylistActions = dynamic(() => import('@/components/functions/PlaylistActions').then((mod) => mod.PlaylistActions), { ssr: false });
-
     return (
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-                <CirclePlus className="size-6" strokeWidth={1} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="glassmorphism">
-                <DropdownMenuItem className="cursor-pointer" onSelect={handleClose}>
-                    <LikeButton trackId={trackId} icon={false}/>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className='flex items-center justify-center cursor-pointer' onSelect={handleClose}>
-                    <PlaylistActions trackId={trackId} icon={false} />
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild disabled={!isTokenExist}>
+                <Button
+                    variant="ghost"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <CirclePlus className="size-6" strokeWidth={1} />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="flex flex-col items-start gap-2 glassmorphism">
+                <LikeButton trackId={trackId} icon={false} />
+                <PlaylistActions trackId={trackId} icon={false} />
+            </PopoverContent>
+        </Popover>
     );
 };

@@ -28,6 +28,7 @@ export const ThemeSwitcher = () => {
 
     return (
         <div className="flex flex-row gap-2 items-center justify-center h-4">
+            <h3>{currentTheme === 'dark' ? 'Темная тема' : 'Яркая тема'}</h3>
             <Switch
                 checked={currentTheme === 'dark'}
                 onCheckedChange={handleThemeChange}

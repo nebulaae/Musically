@@ -6,10 +6,8 @@ import {
     Home,
     Search,
     LibraryBig,
-    Heart,
     PanelRightClose,
     PanelRightOpen,
-    Settings,
     UserRound,
 } from "lucide-react";
 
@@ -44,12 +42,6 @@ const links = [
         url: "/playlist",
         icon: <LibraryBig />,
     },
-    /*{
-        id: 5,
-        title: "Настройки",
-        url: "/settings",
-        icon: <Settings />,
-    },*/,
     {
         id: 4,
         title: "Профиль",

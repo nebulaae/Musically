@@ -117,7 +117,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // --- Derived State ---
 
     const currentTrack = useMemo<Track | null>(() => {
-        if (currentTrackIndex !== null && tracks[currentTrackIndex]) {
+        if (currentTrackIndex !== null && tracks.length > 0 && tracks[currentTrackIndex]) {
             return tracks[currentTrackIndex];
         }
         return null;
@@ -195,25 +195,25 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // --- Backend Interaction ---
     // Consider moving this fetch logic to a dedicated API service file
-    const fetchTrackMetadata = useCallback(async (trackId: string): Promise<{ duration: number, format: string } | null> => {
-        try {
-            const response = await fetch(`/api/tracks/metadata/${trackId}`);
-            if (!response.ok) {
-                console.error('Failed to fetch track metadata:', response.statusText);
-                return null;
-            }
-            const data = await response.json();
-            // Basic validation
-            if (typeof data.duration !== 'number' || isNaN(data.duration) || !isFinite(data.duration)) {
-                console.warn(`Received invalid duration from metadata endpoint for track ${trackId}:`, data.duration);
-                return null; // Treat invalid duration as not found
-            }
-            return { duration: data.duration, format: data.format };
-        } catch (error) {
-            console.error('Error fetching track metadata:', error);
-            return null;
-        }
-    }, []);
+    // const fetchTrackMetadata = useCallback(async (trackId: string): Promise<{ duration: number, format: string } | null> => {
+    //     try {
+    //         const response = await fetch(`/api/tracks/metadata/${trackId}`);
+    //         if (!response.ok) {
+    //             console.error('Failed to fetch track metadata:', response.statusText);
+    //             return null;
+    //         }
+    //         const data = await response.json();
+    //         // Basic validation
+    //         if (typeof data.duration !== 'number' || isNaN(data.duration) || !isFinite(data.duration)) {
+    //             console.warn(`Received invalid duration from metadata endpoint for track ${trackId}:`, data.duration);
+    //             return null; // Treat invalid duration as not found
+    //         }
+    //         return { duration: data.duration, format: data.format };
+    //     } catch (error) {
+    //         console.error('Error fetching track metadata:', error);
+    //         return null;
+    //     }
+    // }, []);
 
 
     // --- Core Audio Logic ---
@@ -223,65 +223,56 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!audio || !track) return;
 
         setIsLoading(true);
-        setCurrentTime(0); // Reset time for new track
-        setDuration(0); // Reset duration
 
-        // Pause current playback *before* changing source
-        if (!audio.paused) {
+        // Only change source if it's different
+        if (audio.src !== track.src) {
+            // Pause current playback first
             audio.pause();
-        }
 
-        // Cancel any pending play promise
-        currentPlayPromiseRef.current = null;
+            // Set source with proper preload
+            audio.src = track.src;
+            audio.preload = "auto"; // Change from "metadata" to "auto" for faster loading
 
-        // Attempt to fetch duration from backend first
-        const metadata = await fetchTrackMetadata(track.id);
-        if (metadata?.duration) {
-            console.log(`Using duration from metadata: ${metadata.duration}`);
-            setDuration(metadata.duration);
-        } else {
-            console.log(`Metadata duration not available for ${track.id}, will rely on 'loadedmetadata' event.`);
-        }
+            // Prioritize playback over metadata loading
+            if (playWhenReady) {
+                // Set up play promise
+                const playPromise = audio.play().catch(err => {
+                    console.error("Play failed:", err);
+                    setIsPlaying(false);
+                    setIsLoading(false);
+                });
 
-
-        // Set the source and preload metadata
-        // IMPORTANT: Setting src implicitly calls load() and aborts current playback/loading
-        audio.src = track.src;
-        audio.preload = "metadata"; // Start loading metadata immediately
-
-        // Reset event listeners (or ensure they are added only once in setup)
-        // We rely on the listeners set up in the initial useEffect
-
-        // IMPORTANT: The 'loadedmetadata' and 'canplay' events will fire naturally.
-        // The play action will be triggered by the useEffect watching isPlaying and currentTrack.
-
-        // If playWhenReady is true, we set isPlaying, and the effect will handle the actual play() call.
-        if (playWhenReady) {
+                currentPlayPromiseRef.current = playPromise;
+                setIsPlaying(true);
+            }
+        } else if (playWhenReady) {
+            // Same source but need to play
+            audio.play().catch(err => {
+                console.error("Play failed:", err);
+                setIsPlaying(false);
+                setIsLoading(false);
+            });
             setIsPlaying(true);
-        } else {
-            setIsPlaying(false); // Ensure state reflects that we are not playing yet
         }
-
-        // We don't explicitly call audio.load() here because setting src does it.
-        // We don't explicitly call audio.play() here; the isPlaying effect handles it.
-        // setIsLoading(false) will be handled by 'canplay' or 'error' events.
-
-    }, [fetchTrackMetadata]);
-
+    }, []);
 
     // --- Playback Control ---
 
     const seekTo = useCallback((time: number) => {
         const audio = audioRef.current;
-        if (audio && isFinite(time)) { // Check if time is a valid number
-            const targetTime = Math.max(0, Math.min(time, duration || 0)); // Clamp time
-            console.log(`Seeking to: ${targetTime} (duration: ${duration})`);
-            isSeekingRef.current = true; // Signal start of seek
-            audio.currentTime = targetTime;
-            setCurrentTime(targetTime); // Update state immediately for responsiveness
+        if (audio && isFinite(time)) {
+            const targetTime = Math.max(0, Math.min(time, audio.duration || duration || 0));
 
-            // No need to manually call play/pause here, browser handles it during seek
-            // isSeekingRef will be reset in the 'seeked' event listener
+            // Prevent time updates during seeking
+            isSeekingRef.current = true;
+
+            // Set state immediately for responsive UI
+            setCurrentTime(targetTime);
+
+            // Set audio time
+            audio.currentTime = targetTime;
+
+            // No need to manually call play here, let the 'seeked' event handler handle it
         }
     }, [duration]);
 
@@ -315,17 +306,14 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTracks(newTracks);
         setOriginalTracks(newOriginalTracks); // Update original list reference
 
-        // If the track is already the current one, just play (or handle toggle)
-        if (currentTrackIndex === newIndex && audioRef.current && !audioRef.current.paused) {
-            // Already playing the target track
-            seekTo(0); // Restart the track maybe? Or just do nothing? Let's restart.
-            // If you don't want to restart, just return here.
-        } else {
-            setCurrentTrackIndex(newIndex);
-            // setAudioSource will be called by the useEffect watching currentTrackIndex
-            // We need to ensure isPlaying is set correctly for that effect.
-            // Set isPlaying to true here to signal intent to play.
-            setIsPlaying(true);
+        setCurrentTrackIndex(newIndex);
+
+        // Important: Set isPlaying to true BEFORE the effect runs
+        setIsPlaying(true);
+
+        // Force immediate audio setup instead of waiting for effect
+        if (track && audioRef.current) {
+            setAudioSource(track, true); // true = play when ready
         }
 
     }, [tracks, originalTracks, currentTrackIndex, shuffleMode, shuffleTracks, seekTo]); // Added seekTo dependency
@@ -370,32 +358,31 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!audio || !currentTrack) return;
 
         if (isPlaying) {
+            // Cancel any pending play promise to avoid "aborted" errors
+            currentPlayPromiseRef.current = null;
+
             audio.pause();
             setIsPlaying(false);
         } else {
-            // If source isn't set or ready, setting isPlaying will trigger load/play via effect
-            if (!audio.src || audio.readyState < HTMLMediaElement.HAVE_METADATA) {
-                console.log("Audio not ready, setting isPlaying to trigger load.");
-                setIsPlaying(true); // Let the effect handle playing when ready
-            } else {
-                setIsLoading(true); // Show loading indicator briefly
-                try {
-                    // Attempt to play
-                    currentPlayPromiseRef.current = audio.play();
-                    await currentPlayPromiseRef.current;
-                    setIsPlaying(true);
-                    // setIsLoading(false); // Handled by 'playing' event
-                } catch (error: any) {
-                    console.error("Toggle Play failed:", error);
-                    if (error.name !== 'AbortError') {
-                        // Handle unexpected errors (e.g., user interaction required)
-                        setIsPlaying(false); // Ensure state is consistent
-                    }
-                    // AbortError might happen if we rapidly toggle, ignore it here
-                    setIsLoading(false); // Ensure loading stops on error
-                } finally {
-                    currentPlayPromiseRef.current = null;
+            setIsLoading(true);
+
+            try {
+                // Always create a new play promise
+                const playPromise = audio.play();
+                currentPlayPromiseRef.current = playPromise;
+
+                // Wait for play to complete
+                await playPromise;
+                setIsPlaying(true);
+            } catch (error: any) {
+                // Ignore AbortError as it's expected when operations are interrupted
+                if (error.name !== 'AbortError') {
+                    console.error("Play failed:", error);
+                    setIsPlaying(false);
                 }
+            } finally {
+                setIsLoading(false);
+                currentPlayPromiseRef.current = null;
             }
         }
     }, [isPlaying, currentTrack]);
@@ -545,9 +532,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
 
         const handleTimeUpdate = () => {
-            // Throttle updates
+            // Throttle updates to 4 times per second
             const now = Date.now();
-            if (!isSeekingRef.current && now - lastUpdateTimeRef.current > 250) { // 250ms throttle
+            if (!isSeekingRef.current && now - lastUpdateTimeRef.current > 250) {
                 setCurrentTime(audio.currentTime || 0);
                 lastUpdateTimeRef.current = now;
             }
@@ -566,27 +553,29 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
 
         const handleEnded = () => {
-            console.log("Event: ended");
             if (repeatMode === true) {
-                console.log("Repeat One: Restarting track");
                 seekTo(0);
+                setIsPlaying(true);
                 audio.play().catch(e => console.error("Repeat play failed:", e));
             } else {
-                console.log("Playing next track on ended");
-                nextTrack(); // Handles repeat 'all' logic internally
+                nextTrack();
             }
         };
 
         const handleSeeked = () => {
             console.log("Event: seeked");
-            isSeekingRef.current = false; // Seeking finished
-            // If we were playing before seeking, resume playback
-            if (isPlaying) {
-                audio.play().catch(e => console.error("Play after seek failed:", e));
+            isSeekingRef.current = false;
+
+            // Ensure time is correct
+            setCurrentTime(audio.currentTime);
+
+            // If we were playing before seeking, resume
+            if (isPlaying && audio.paused) {
+                audio.play().catch(e => {
+                    console.error("Play after seek failed:", e);
+                    setIsPlaying(false);
+                });
             }
-            // Re-enable throttled time updates
-            lastUpdateTimeRef.current = 0; // Allow immediate update after seek
-            setCurrentTime(audio.currentTime || 0); // Ensure UI is exactly correct
         };
 
         const handleError = (e: ErrorEvent) => {

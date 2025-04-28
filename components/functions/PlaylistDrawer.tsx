@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import { useState } from 'react';
 import { usePlaylist } from '@/hooks/usePlaylist';
@@ -23,8 +23,8 @@ interface PlaylistDrawerProps {
     trackId: string;
 }
 
-const PlaylistDrawer = ({ open, onOpenChange, trackId }: PlaylistDrawerProps) => {
-    const isTokenExist = useToken();
+export const PlaylistDrawer = ({ open, onOpenChange, trackId }: PlaylistDrawerProps) => {
+    const { isTokenExist } = useToken();
     const {
         playlists,
         isLoading,
@@ -38,11 +38,22 @@ const PlaylistDrawer = ({ open, onOpenChange, trackId }: PlaylistDrawerProps) =>
 
     const handleCreatePlaylist = async () => {
         if (!newPlaylistName.trim()) return;
+
         const newPlaylist = await createNewPlaylist(newPlaylistName);
         if (newPlaylist) {
             setNewPlaylistName('');
             toast.success('Плейлист успешно создан!');
             onOpenChange(false);
+        }
+    };
+
+    const handleToggleTrack = async (playlistId: string, isInPlaylist: boolean) => {
+        if (isInPlaylist) {
+            await removeFromPlaylist(playlistId);
+            toast.success("Трек удален из плейлиста");
+        } else {
+            await addToPlaylist(playlistId);
+            toast.success("Песня успешно добавлена в плейлист");
         }
     };
 
@@ -71,21 +82,12 @@ const PlaylistDrawer = ({ open, onOpenChange, trackId }: PlaylistDrawerProps) =>
                                 playlists.map((playlist) => {
                                     const isInPlaylist = isTrackInPlaylist(playlist.id);
 
-                                    const handleToggleTrack = async () => {
-                                        if (isInPlaylist) {
-                                            await removeFromPlaylist(playlist.id);
-                                            toast.success("Песня успешна добавлена в плейлист.")
-                                        } else {
-                                            await addToPlaylist(playlist.id);
-                                        }
-                                    };
-
                                     return (
                                         <Button
                                             key={playlist.id}
                                             variant={isInPlaylist ? 'default' : 'ghost'}
                                             className="w-full justify-between purple-text"
-                                            onClick={handleToggleTrack}
+                                            onClick={() => handleToggleTrack(playlist.id, isInPlaylist)}
                                         >
                                             <span>{playlist.name}</span>
                                             {isInPlaylist && <Check className="h-4 w-4 purple-text" />}
@@ -127,5 +129,3 @@ const PlaylistDrawer = ({ open, onOpenChange, trackId }: PlaylistDrawerProps) =>
         </Drawer>
     );
 };
-
-export default PlaylistDrawer;

@@ -10,14 +10,6 @@ const Page = () => {
         limit: 10
     }));
 
-    const someCollection = useTracks(({
-        trackNames: ["b6515acab120c14ac074256bcb47452c"],
-        page: 1,
-        limit: 10 // если не хотите пагинацию увеличьте лимит
-        // лимит это кол-во песен на одну страницу
-        // можете увеличить до сотни или тысячи
-    }));
-
     return (
         <section className="flex flex-col items-center w-full pb-32">
             <div className="container">
@@ -41,22 +33,6 @@ const Page = () => {
                         totalPages={all.totalPages}
                         currentPage={all.currentPage}
                         goToPage={all.goToPage}
-                    />
-                </div>
-                <div className="flex flex-col gap-4 mb-8">
-                    <div className="flex flex-row items-center justify-between">
-                        <h1 className="title-text">Все</h1>
-                    </div>
-                    <FetchTracks
-                        tracks={someCollection.tracks}
-                        isLoading={someCollection.isLoading}
-                        error={someCollection.error}
-                        handleTrackSelect={someCollection.handleTrackSelect}
-                        layout="blocks"
-                        variant="grid"
-                        totalPages={someCollection.totalPages}
-                        currentPage={someCollection.currentPage}
-                        goToPage={someCollection.goToPage}
                     />
                 </div>
             </div>

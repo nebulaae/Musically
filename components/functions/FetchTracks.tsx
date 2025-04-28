@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { Play, Pause } from 'lucide-react';
 import { SoundWave } from '../ui/magic/SoundWave';
-import { LikeButton } from '@/components/functions/LikeButton';
+import { TrackActions } from './TrackActions';
 import {
   Pagination,
   PaginationContent,
@@ -24,58 +24,89 @@ import {
   useEffect,
   useCallback,
 } from 'react';
-import { PlaylistActions } from './PlaylistActions';
 
-interface TrackItemProps {
+// Common props for track items
+interface BaseTrackItemProps {
   track: Track;
   index: number;
   isPlaying: boolean;
   handleTrackSelect: (index: number) => void;
 }
 
-// Memoized TrackItem component to prevent unnecessary re-renders
-const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackItemProps) => {
+// Track cover image component to reduce duplication
+const TrackCover = memo(({
+  track,
+  isPlaying,
+  size = 'full',
+  priority = false
+}: {
+  track: Track,
+  isPlaying: boolean,
+  size?: string,
+  priority?: boolean
+}) => {
+  const coverSrc = getProxiedImageUrl(track.cover || '/default-cover.jpg');
+  const dimensions = size === 'small' ? { width: 48, height: 48 } : { width: 200, height: 200 };
+
+  return (
+    <div className={`relative ${size === 'small' ? 'w-12 h-12' : 'w-full'}`}>
+      <Image
+        src={coverSrc}
+        alt={track.title}
+        width={dimensions.width}
+        height={dimensions.height}
+        className={`${size === 'small' ? 'rounded' : 'rounded-lg w-full'} object-cover`}
+        priority={priority}
+        loading={priority ? "eager" : "lazy"}
+        placeholder="blur"
+        blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFeAJ5gMtG4AAAAABJRU5ErkJggg=="
+      />
+
+      {isPlaying && (
+        <div className={`absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] ${size === 'small' ? 'rounded-sm' : 'rounded-lg'}`}>
+          <SoundWave dark />
+        </div>
+      )}
+    </div>
+  );
+});
+
+TrackCover.displayName = 'TrackCover';
+
+// Play/Pause overlay component
+const PlayPauseOverlay = memo(({ isPlaying }: { isPlaying: boolean }) => (
+  <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
+    {isPlaying ? (
+      <Pause className="w-8 h-8 text-white" />
+    ) : (
+      <Play className="w-8 h-8 text-white" />
+    )}
+  </div>
+));
+
+PlayPauseOverlay.displayName = 'PlayPauseOverlay';
+
+// Memoized TrackItem component for grid/flex layout
+const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: BaseTrackItemProps) => {
   const handleClick = useCallback(() => {
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
-  // Use the proxied image URL
-  const coverSrc = getProxiedImageUrl(track.cover || '/default-cover.jpg');
-
   return (
-    <div className="relative flex flex-col items-start group cursor-pointer min-w-[150px] sm:min-w-[200px]">
+    <div className="relative flex flex-col items-start group cursor-pointer min-w-[140px] w-full sm:min-w-[180px] md:min-w-[200px]">
       <div className="relative w-full" onClick={handleClick}>
-        <Image
-          src={coverSrc}
-          alt={track.title}
-          width={200}
-          height={200}
-          className="rounded-lg w-full object-cover"
+        <TrackCover
+          track={track}
+          isPlaying={isPlaying}
           priority={index < 4}
-          loading={index < 8 ? "eager" : "lazy"}
-          placeholder="blur"
-          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFeAJ5gMtG4AAAAABJRU5ErkJggg=="
         />
-
-        {isPlaying && (
-          <div className="absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
-            <SoundWave dark />
-          </div>
-        )}
-
-        <div className="absolute flex items-center justify-center inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-lg">
-          {isPlaying ? (
-            <Pause className="w-8 h-8 text-white" />
-          ) : (
-            <Play className="w-8 h-8 text-white" />
-          )}
-        </div>
+        <PlayPauseOverlay isPlaying={isPlaying} />
       </div>
 
-      <div className="mt-2 sm:mt-4 text-start w-full flex items-center justify-between">
-        <div onClick={handleClick}>
-          <h3 className="font-semibold">{track.title}</h3>
-          <p className="text-sm text-gray-500">{track.author}</p>
+      <div className="mt-2 sm:mt-3 text-start w-full flex items-center justify-between">
+        <div onClick={handleClick} className="w-full pr-2">
+          <h3 className="font-semibold text-sm sm:text-base truncate">{track.title}</h3>
+          <p className="text-xs sm:text-sm text-gray-500 truncate">{track.author}</p>
         </div>
       </div>
     </div>
@@ -85,43 +116,31 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackIte
 TrackItem.displayName = 'TrackItem';
 
 // Memoized ListTrackItem component
-const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: TrackItemProps) => {
+const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: BaseTrackItemProps) => {
   const handleClick = useCallback(() => {
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
 
-  // Use the proxied image URL
-  const coverSrc = getProxiedImageUrl(track.cover || '/default-cover.jpg');
-
   return (
-    <div className={`flex items-center p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 dark:bg-neutral-700 rounded-xl' : ''}`}>
+    <div className={`flex items-center p-2 sm:p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:rounded-xl cursor-pointer ${isPlaying ? 'bg-neutral-100 dark:bg-neutral-700 rounded-xl' : ''}`}>
       <div className="flex items-center flex-1 min-w-0" onClick={handleClick}>
-        <div className="relative flex-shrink-0 w-12 h-12 mr-3">
-          <Image
-            src={coverSrc}
-            alt={track.title}
-            width={48}
-            height={48}
-            className="rounded object-cover"
+        <div className="relative flex-shrink-0 mr-2 sm:mr-3">
+          <TrackCover
+            track={track}
+            isPlaying={isPlaying}
+            size="small"
             priority={index < 5}
           />
-
-          {isPlaying && (
-            <div className="absolute flex items-center justify-center inset-0 transition-opacity duration-200 bg-black/20 backdrop-blur-[3px] rounded-sm">
-              <SoundWave dark />
-            </div>
-          )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <h4 className="font-medium truncate">{track.title}</h4>
-          <p className="text-sm text-gray-500 truncate">{track.author}</p>
+        <div className="min-w-0 flex-1 max-w-full">
+          <h4 className="font-medium text-sm sm:text-base truncate">{track.title}</h4>
+          <p className="text-xs sm:text-sm text-gray-500 truncate">{track.author}</p>
         </div>
       </div>
 
-      <div className="flex items-center pr-4">
-        <LikeButton trackId={track.id} size="md" />
-        <PlaylistActions trackId={track.id} />
+      <div className="flex items-center pr-2 sm:pr-4 flex-shrink-0">
+        <TrackActions trackId={track.id} />
       </div>
     </div>
   );
@@ -142,7 +161,124 @@ interface FetchTracksProps {
   totalPages?: number;
   currentPage?: number;
   goToPage?: (page: number) => void;
+}
+
+// Loading skeletons component
+const LoadingSkeletons = ({ layout = 'blocks' }: { layout?: 'blocks' | 'list' }) => {
+  if (layout === 'blocks') {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="space-y-2">
+            <Skeleton className="w-full aspect-square rounded-xl" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full gap-3">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={index} className="flex flex-row gap-2 items-center">
+          <Skeleton className="w-12 h-12 rounded" />
+          <div className="flex-1">
+            <Skeleton className="h-5 w-full mb-1" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 };
+
+// Pagination component
+const TrackPagination = memo(({
+  totalPages,
+  currentPage,
+  goToPage
+}: {
+  totalPages: number,
+  currentPage: number,
+  goToPage: (page: number) => void
+}) => {
+  if (totalPages <= 1) return null;
+
+  // Calculate which pages to show with ellipsis
+  const getVisiblePages = () => {
+    const maxDisplayedPages = 5;
+
+    if (totalPages <= maxDisplayedPages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const sidePages = Math.floor((maxDisplayedPages - 3) / 2);
+    const leftSide = Math.max(2, currentPage - sidePages);
+    const rightSide = Math.min(totalPages - 1, currentPage + sidePages);
+
+    const visiblePages = [1];
+
+    if (leftSide > 2) {
+      visiblePages.push(-1); // Left ellipsis
+    }
+
+    for (let i = leftSide; i <= rightSide; i++) {
+      visiblePages.push(i);
+    }
+
+    if (rightSide < totalPages - 1) {
+      visiblePages.push(-2); // Right ellipsis
+    }
+
+    visiblePages.push(totalPages);
+
+    return visiblePages;
+  };
+
+  const visiblePages = getVisiblePages();
+
+  return (
+    <Pagination className="mt-6">
+      <PaginationContent>
+        <PaginationItem>
+          <PaginationPrevious
+            onClick={() => goToPage(Math.max(1, currentPage - 1))}
+            className={currentPage === 1 ? "pointer-events-none opacity-50 purple-text" : "cursor-pointer purple-accent"}
+          />
+        </PaginationItem>
+
+        {visiblePages.map((page, index) => (
+          page < 0 ? (
+            <PaginationItem key={`ellipsis-${page}`}>
+              <PaginationEllipsis />
+            </PaginationItem>
+          ) : (
+            <PaginationItem key={page}>
+              <PaginationLink
+                onClick={() => goToPage(page)}
+                isActive={currentPage === page}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          )
+        ))}
+
+        <PaginationItem>
+          <PaginationNext
+            onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
+            className={currentPage === totalPages ? "pointer-events-none opacity-50 purple-text" : "cursor-pointer purple-accent"}
+          />
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
+});
+
+TrackPagination.displayName = 'TrackPagination';
 
 export const FetchTracks = memo(({
   tracks,
@@ -157,16 +293,15 @@ export const FetchTracks = memo(({
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
-  // Check if a track is the currently playing track (memoized)
+  // Check if a track is the currently playing track
   const getTrackPlayingState = useCallback((track: Track) => {
     if (!isPlaying) return false;
     const currentTrack = currentTracks[currentTrackIndex!];
     return currentTrack && currentTrack.id === track.id;
   }, [isPlaying, currentTrackIndex, currentTracks]);
 
-  // Add this useEffect to update the trackStateCache when tracks or playing state changes
+  // Update cache when tracks or playing state changes
   useEffect(() => {
-    // Update cache when tracks change or playing state changes
     tracks.forEach(track => {
       const isTrackPlaying = getTrackPlayingState(track);
       trackStateCache.set(track.id, {
@@ -175,7 +310,7 @@ export const FetchTracks = memo(({
     });
   }, [tracks, getTrackPlayingState]);
 
-  // Optional: Add this to use the cache for performance optimization
+  // Use the cache for performance optimization
   const isTrackPlaying = useCallback((track: Track) => {
     // Check cache first
     const cachedState = trackStateCache.get(track.id);
@@ -189,40 +324,14 @@ export const FetchTracks = memo(({
     return isPlaying;
   }, [getTrackPlayingState]);
 
-  // Handle track selection - passing only the current page's tracks
-  // This is the key fix - we're not trying to calculate absolute indexes anymore
+  // Handle track selection within current page's tracks
   const handleTrackSelection = useCallback((index: number) => {
-    // Simply pass the index within the current page's tracks array
     handleTrackSelect(index, tracks);
   }, [handleTrackSelect, tracks]);
 
   // For loading state
   if (isLoading) {
-    if (layout === 'blocks') {
-      return (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 10 }).map((_, index) => (
-            <div key={index} className="space-y-2">
-              <Skeleton className="w-full h-[250px] rounded-xl" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ))}
-        </div>
-      )
-    }
-
-    if (layout === "list") {
-      return (
-        <div className="flex flex-col w-full gap-4">
-          {Array.from({ length: 10 }).map((_, index) => (
-            <div key={index} className="flex flex-row gap-2">
-              <Skeleton className="w-12 h-12" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ))}
-        </div>
-      )
-    }
+    return <LoadingSkeletons layout={layout} />;
   }
 
   // For error state
@@ -235,91 +344,13 @@ export const FetchTracks = memo(({
     return <div className="text-start py-4">Песни не найдены.</div>;
   }
 
-  // Render pagination component
-  // Render pagination component
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    // Calculate which pages to show with ellipsis
-    const getVisiblePages = () => {
-      const maxDisplayedPages = 5; // You can adjust this number
-
-      // Always show all pages if there are few enough
-      if (totalPages <= maxDisplayedPages) {
-        return Array.from({ length: totalPages }, (_, i) => i + 1);
-      }
-
-      const sidePages = Math.floor((maxDisplayedPages - 3) / 2);
-      const leftSide = Math.max(2, currentPage - sidePages);
-      const rightSide = Math.min(totalPages - 1, currentPage + sidePages);
-
-      const visiblePages = [1];
-
-      if (leftSide > 2) {
-        visiblePages.push(-1); // Left ellipsis
-      }
-
-      for (let i = leftSide; i <= rightSide; i++) {
-        visiblePages.push(i);
-      }
-
-      if (rightSide < totalPages - 1) {
-        visiblePages.push(-2); // Right ellipsis
-      }
-
-      visiblePages.push(totalPages);
-
-      return visiblePages;
-    };
-
-    const visiblePages = getVisiblePages();
-
-    return (
-      <Pagination className="mt-6">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => goToPage(Math.max(1, currentPage - 1))}
-              className={currentPage === 1 ? "pointer-events-none opacity-50 purple-text" : "cursor-pointer purple-accent"}
-            />
-          </PaginationItem>
-
-          {visiblePages.map((page, index) => (
-            page < 0 ? (
-              <PaginationItem key={`ellipsis-${page}`}>
-                <PaginationEllipsis />
-              </PaginationItem>
-            ) : (
-              <PaginationItem key={page}>
-                <PaginationLink
-                  onClick={() => goToPage(page)}
-                  isActive={currentPage === page}
-                  className="cursor-pointer"
-                >
-                  {page}
-                </PaginationLink>
-              </PaginationItem>
-            )
-          ))}
-
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
-              className={currentPage === totalPages ? "pointer-events-none opacity-50 purple-text" : "cursor-pointer purple-accent"}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  };
-
   // Render tracks in block layout (grid or flex of cards)
   if (layout === 'blocks') {
     return (
       <div className="flex flex-col w-full">
         <div className={variant === 'grid'
-          ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-          : "flex flex-row overflow-x-auto overflow-y-hidden gap-4 w-full"
+          ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
+          : "flex flex-row overflow-x-auto overflow-y-hidden gap-3 sm:gap-4 w-full pb-2 scrollbar-thin"
         }>
           {tracks.map((track, index) => (
             <TrackItem
@@ -331,7 +362,11 @@ export const FetchTracks = memo(({
             />
           ))}
         </div>
-        {renderPagination()}
+        <TrackPagination
+          totalPages={totalPages}
+          currentPage={currentPage}
+          goToPage={goToPage}
+        />
       </div>
     );
   }
@@ -339,7 +374,7 @@ export const FetchTracks = memo(({
   // Render List layout
   return (
     <div className="flex flex-col w-full">
-      <div className="bg-sidebar glassmorphism w-full border-style rounded-xl divide-y">
+      <div className="bg-sidebar glassmorphism w-full border-style rounded-lg p-2 divide-y">
         {tracks.map((track, index) => (
           <ListTrackItem
             key={track.id}
@@ -350,7 +385,11 @@ export const FetchTracks = memo(({
           />
         ))}
       </div>
-      {renderPagination()}
+      <TrackPagination
+        totalPages={totalPages}
+        currentPage={currentPage}
+        goToPage={goToPage}
+      />
     </div>
   );
 });

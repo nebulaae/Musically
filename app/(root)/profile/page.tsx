@@ -1,5 +1,7 @@
 "use client"
 
+import Link from 'next/link';
+
 import { useState, useEffect } from 'react';
 import { GetLikedSongs } from '@/components/functions/GetLikedSongs';
 
@@ -154,10 +156,12 @@ const Page = () => {
                 {/* SETTINGS CONTAINER */}
                 <div className="flex items-center justify-end lg:hidden">
                     {/* SETTINGS */}
-                    <Button className="button-neutral">
-                        <Settings />
-                        Настройки
-                    </Button>
+                    <Link href="/settings">
+                        <Button className="button-neutral">
+                            <Settings />
+                            Настройки
+                        </Button>
+                    </Link>
                 </div>
                 {/* HEADER */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -178,10 +182,12 @@ const Page = () => {
                     </div>
                     <div className="hidden lg:flex ">
                         {/* SETTINGS */}
-                        <Button className="button-neutral">
-                            <Settings />
-                            Настройки
-                        </Button>
+                        <Link href="/settings">
+                            <Button className="button-neutral">
+                                <Settings />
+                                Настройки
+                            </Button>
+                        </Link>
                     </div>
                 </div>
 

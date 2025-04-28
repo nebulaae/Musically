@@ -177,7 +177,7 @@ const BottomPlayer = () => {
                 className={`fixed bg-sidebar glassmorphism z-100 
                            ${isExpanded
                         ? 'inset-0 overflow-hidden' // Cover full screen, hide overflow initially
-                        : 'bottom-20 sm:bottom-24 md:bottom-0 left-0 w-full p-4' // Original collapsed style
+                        : 'bottom-18 sm:bottom-24 md:bottom-0 left-0 w-full p-4' // Original collapsed style
                     } `}
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: isExpanded ? 0 : 0, opacity: 1 }} // Keep y:0 for expanded
@@ -323,13 +323,13 @@ const BottomPlayer = () => {
                                 disabled={isButtonDisabled}
                                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                             >
-                                {isButtonDisabled ? (
-                                    <Loader2 className={`w-7 h-7 animate-spin`} />
-                                ) : isPlaying ? (
+                                {isPlaying ? (
                                     <Pause className={`w-7 h-7`} />
                                 ) : (
                                     <Play className={`w-7 h-7`} />
-                                )}
+                                )
+                                }
+                                {isButtonDisabled ? <div className="absolute w-7 h-7 opacity-0"></div> : <></>}
                             </motion.button>
                             {/* Next */}
                             <motion.button
