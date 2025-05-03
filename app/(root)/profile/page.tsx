@@ -151,7 +151,7 @@ const Page = () => {
     if (!user) return <Authorise profile />;
 
     return (
-        <section className="flex flex-col items-center w-full pb-32">
+        <section className="flex flex-col items-center w-full pb-40">
             <div className="flex flex-col gap-6 container">
                 {/* SETTINGS CONTAINER */}
                 <div className="flex items-center justify-end lg:hidden">

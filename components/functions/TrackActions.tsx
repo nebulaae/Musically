@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useToken } from '@/app/providers/TokenProvider';
 
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -18,9 +18,11 @@ const LikeButton = dynamic(() => import('@/components/functions/LikeButton').the
 const PlaylistActions = dynamic(() => import('@/components/functions/PlaylistActions').then((mod) => mod.PlaylistActions), { ssr: false });
 
 export const TrackActions = ({
-    trackId
+    trackId,
+    heart = false,
 }: {
     trackId: string;
+    heart?: boolean;
 }) => {
     const { isTokenExist } = useToken();
     const [isOpen, setIsOpen] = useState(false);
@@ -32,7 +34,11 @@ export const TrackActions = ({
                     variant="ghost"
                     className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <CirclePlus className="size-6" strokeWidth={1} />
+                    {heart ? (
+                        <Heart className="size-6" />
+                    ) : (
+                        <CirclePlus className="size-6" strokeWidth={1} />
+                    )}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="flex flex-col items-start gap-2 glassmorphism">

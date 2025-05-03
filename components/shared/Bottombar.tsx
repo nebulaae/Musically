@@ -1,6 +1,7 @@
-"use client";
+"use client"
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +13,9 @@ import {
 
 export const Bottombar = () => {
     const pathname = usePathname();
+
+    const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
+    const [prevScrollPos, setPrevScrollPos] = useState(0);
 
     const links = [
         {
@@ -40,8 +44,31 @@ export const Bottombar = () => {
         },
     ]
 
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollPos = window.scrollY;
+
+            if (currentScrollPos > prevScrollPos && currentScrollPos > 100) {
+                setIsBottomBarVisible(false);
+            } else {
+                setIsBottomBarVisible(true);
+            }
+
+            setPrevScrollPos(currentScrollPos);
+        };
+
+        window.addEventListener('scroll', handleScroll);
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [prevScrollPos]);
+
+    const bottomBarStyle = {
+        transform: isBottomBarVisible ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.3s ease-in-out',
+    };
+
     return (
-        <nav className="fixed bottom-0 p-4 xs:px-7 md:hidden z-10 w-full bg-sidebar glassmorphism border-t-[1px]" >
+        <nav style={bottomBarStyle} className="fixed bottom-0 p-2 xs:px-7 md:hidden z-10 w-full bg-sidebar glassmorphism border-t-[1px]" >
             <div className="flex items-center justify-between gap-2 xs:gap-4">
                 {links.map((link) => {
                     return (

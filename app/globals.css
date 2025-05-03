@@ -133,7 +133,7 @@
   }
 
   body {
-    @apply bg-neutral-50 text-foreground dark:bg-neutral-800;
+    @apply bg-neutral-50 text-foreground dark:bg-neutral-800 select-none;
     /* background: radial-gradient(circle, rgba(255, 235, 249, 1) 0%, rgba(228, 241, 255, 1) 100%); */
   }
 }

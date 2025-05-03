@@ -60,6 +60,7 @@ const TrackCover = memo(({
         loading={priority ? "eager" : "lazy"}
         placeholder="blur"
         blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFeAJ5gMtG4AAAAABJRU5ErkJggg=="
+        draggable={false}
       />
 
       {isPlaying && (
