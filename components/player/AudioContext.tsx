@@ -20,14 +20,6 @@ interface Track {
     album?: string;
 }
 
-// Minimal track info for storage
-interface MinimalTrack {
-    id: string;
-    title: string;
-    author: string;
-    src: string;
-}
-
 interface AudioContextType {
     tracks: Track[];
     currentTrackIndex: number;
@@ -50,21 +42,7 @@ interface AudioContextType {
     hasPrevTrack: boolean;
 }
 
-// Storage interface
-interface StoredAudioState {
-    tracks: MinimalTrack[];
-    originalTracks: MinimalTrack[];
-    currentTrackIndex: number;
-    volume: number;
-    currentTime: number;
-    shuffleMode: boolean;
-    repeatMode: boolean;
-}
-
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
-
-// Max storage size (2MB)
-const MAX_STORAGE_SIZE = 2 * 1024 * 1024;
 
 export const useAudio = () => {
     const context = useContext(AudioContext);
@@ -87,15 +65,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const savedTimeRef = useRef<number>(0);
-    const storageFailedRef = useRef<boolean>(false);
-
-    // Convert track to minimal version for storage
-    const trackToMinimal = useCallback((track: Track): MinimalTrack => ({
-        id: track.id,
-        title: track.title,
-        author: track.author,
-        src: track.src
-    }), []);
 
     // Calculate if there are next/previous tracks
     const hasNextTrack = useMemo(() =>
@@ -107,48 +76,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         tracks.length > 1 && currentTrackIndex > 0,
         [tracks, currentTrackIndex]
     );
-
-    // Safely save to localStorage with size check
-    const safelyStoreState = useCallback((state: StoredAudioState): boolean => {
-        if (storageFailedRef.current) return false;
-
-        try {
-            const serialized = JSON.stringify(state);
-            if (serialized.length > MAX_STORAGE_SIZE) {
-                // If too large, only store critical preferences
-                const minimalState = {
-                    currentTrackIndex: state.currentTrackIndex,
-                    volume: state.volume,
-                    shuffleMode: state.shuffleMode,
-                    repeatMode: state.repeatMode,
-                    // Store only current track info
-                    tracks: state.tracks.length > 0 ? [state.tracks[state.currentTrackIndex]] : [],
-                    originalTracks: [],
-                    currentTime: state.currentTime
-                };
-
-                const minimalSerialized = JSON.stringify(minimalState);
-                if (minimalSerialized.length > MAX_STORAGE_SIZE) {
-                    // If still too large, store only preferences
-                    const prefsOnly = {
-                        volume: state.volume,
-                        shuffleMode: state.shuffleMode,
-                        repeatMode: state.repeatMode
-                    };
-                    localStorage.setItem('audioPlayerState', JSON.stringify(prefsOnly));
-                } else {
-                    localStorage.setItem('audioPlayerState', minimalSerialized);
-                }
-            } else {
-                localStorage.setItem('audioPlayerState', serialized);
-            }
-            return true;
-        } catch (error) {
-            console.error('Error saving audio state:', error);
-            storageFailedRef.current = true;
-            return false;
-        }
-    }, []);
 
     // Shuffle an array of tracks
     const shuffleTracks = useCallback((trackArray: Track[]) => {
@@ -290,91 +217,22 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
-    // Clear old or unused localStorage items
-    const cleanupStorage = useCallback(() => {
-        try {
-            // List of keys to keep
-            const keysToKeep = ['audioPlayerState'];
-
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && !keysToKeep.includes(key)) {
-                    localStorage.removeItem(key);
-                }
-            }
-        } catch (error) {
-            console.error('Error cleaning up storage:', error);
-        }
-    }, []);
-
-    // Load saved state from localStorage on initial render
-    useEffect(() => {
-        // Only run on client side
-        if (typeof window !== 'undefined') {
-            try {
-                // First clean up any unused storage
-                cleanupStorage();
-
-                const savedState = localStorage.getItem('audioPlayerState');
-                if (savedState) {
-                    const parsedState = JSON.parse(savedState);
-
-                    // Set volume and preferences regardless of tracks
-                    setVolume(parsedState.volume || 0.5);
-                    setShuffleMode(parsedState.shuffleMode || false);
-                    setRepeatMode(parsedState.repeatMode || false);
-
-                    if (parsedState.tracks && parsedState.tracks.length > 0) {
-                        // Ensure we have valid currentTrackIndex
-                        const safeTrackIndex = Math.min(
-                            parsedState.currentTrackIndex || 0,
-                            parsedState.tracks.length - 1
-                        );
-
-                        setTracks(parsedState.tracks);
-                        setOriginalTracks(parsedState.originalTracks || parsedState.tracks);
-                        setCurrentTrackIndex(safeTrackIndex);
-                        savedTimeRef.current = parsedState.currentTime || 0;
-
-                        // If there was a track playing, set source correctly
-                        if (audioRef.current && parsedState.tracks[safeTrackIndex]) {
-                            audioRef.current.src = parsedState.tracks[safeTrackIndex].src;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading audio state from localStorage:', error);
-            }
-        }
-    }, [cleanupStorage]);
-
-    // Save state to localStorage with throttling
-    useEffect(() => {
-        if (tracks.length > 0) {
-            // Use a timer to prevent excessive writes
-            const saveTimer = setTimeout(() => {
-                const stateToSave: StoredAudioState = {
-                    // Store minimal track info
-                    tracks: tracks.map(trackToMinimal),
-                    originalTracks: originalTracks.length > 0 ? originalTracks.map(trackToMinimal) : [],
-                    currentTrackIndex,
-                    volume,
-                    currentTime,
-                    shuffleMode,
-                    repeatMode
-                };
-
-                safelyStoreState(stateToSave);
-            }, 1000); // 1 second delay
-
-            return () => clearTimeout(saveTimer);
-        }
-    }, [tracks, originalTracks, currentTrackIndex, volume, currentTime, shuffleMode, repeatMode, trackToMinimal, safelyStoreState]);
-
-    // Initialize audio element
+    // Initialize audio element with optimized settings
     useEffect(() => {
         if (!audioRef.current) {
             audioRef.current = new Audio();
+
+            // Optimize audio loading performance
+            if (audioRef.current) {
+                // Set preload to auto to start loading as soon as src is set
+                audioRef.current.preload = "auto";
+
+                // Lower latency mode where available
+                if ('mozAudioChannelType' in audioRef.current) {
+                    // @ts-ignore - Firefox-specific property
+                    audioRef.current.mozAudioChannelType = 'content';
+                }
+            }
         }
 
         const audio = audioRef.current;
@@ -408,7 +266,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
     }, [repeatMode, hasNextTrack, nextTrack, volume]);
 
-    // Effect for updating track source
+    // Effect for updating track source with optimized loading
     useEffect(() => {
         if (tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
             const currentTrack = tracks[currentTrackIndex];
@@ -421,27 +279,57 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     savedTimeRef.current = audio.currentTime;
                 } else {
                     savedTimeRef.current = 0;
+
+                    // Optimize track loading: pause current audio before changing source
+                    audio.pause();
+
+                    // Update source
+                    audio.src = currentTrack.src;
+
+                    // Preload next track if available for faster transitions
+                    if (hasNextTrack && tracks[currentTrackIndex + 1]) {
+                        const preloadAudio = new Audio();
+                        preloadAudio.preload = "metadata";
+                        preloadAudio.src = tracks[currentTrackIndex + 1].src;
+                        // Remove the reference after a short time to avoid memory leaks
+                        setTimeout(() => {
+                            preloadAudio.removeAttribute('src');
+                        }, 30000);
+                    }
                 }
 
-                // Update source
-                audio.src = currentTrack.src;
-
-                // After source is updated, set the saved time
-                audio.addEventListener('loadedmetadata', () => {
+                // After source is updated, set the saved time with optimized event handling
+                const handleLoaded = () => {
                     audio.currentTime = savedTimeRef.current;
                     if (isPlaying) {
-                        audio.play().catch(e => console.error("Play failed:", e));
+                        // Use play() with catch for better error handling
+                        const playPromise = audio.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                console.error("Play failed:", e);
+                                setIsPlaying(false);
+                            });
+                        }
                     }
-                }, { once: true });
+                };
+
+                // Use canplay instead of loadedmetadata for more reliable playback
+                audio.addEventListener('canplay', handleLoaded, { once: true });
             }
         }
-    }, [tracks, currentTrackIndex]);
+    }, [tracks, currentTrackIndex, hasNextTrack, isPlaying]);
 
     // Effect for play/pause
     useEffect(() => {
         if (audioRef.current && tracks.length > 0 && currentTrackIndex >= 0 && currentTrackIndex < tracks.length) {
             if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Play failed:", e));
+                const playPromise = audioRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => {
+                        console.error("Play failed:", e);
+                        setIsPlaying(false);
+                    });
+                }
             } else {
                 audioRef.current.pause();
             }

@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToken } from '@/app/providers/TokenProvider';
 
 import { CirclePlus, Heart } from "lucide-react";
@@ -26,6 +26,30 @@ export const TrackActions = ({
 }) => {
     const { isTokenExist } = useToken();
     const [isOpen, setIsOpen] = useState(false);
+    const [isLiked, setIsLiked] = useState(false);
+
+    useEffect(() => {
+        if (!trackId || !isTokenExist) return;
+
+        const fetchLikeStatus = async () => {
+            try {
+                const res = await fetch('/api/user/isSongLiked', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trackId }),
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    setIsLiked(data.isLiked);
+                }
+            } catch (err) {
+                console.error('Error fetching like status:', err);
+            }
+        };
+
+        fetchLikeStatus();
+    }, [trackId, isTokenExist]);
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -35,7 +59,11 @@ export const TrackActions = ({
                     className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {heart ? (
-                        <Heart className="size-6" />
+                        <Heart className={`size-6 
+                                            ${isLiked
+                                ? 'fill-red-500 text-red-500'
+                                : 'text-neutral-800 hover:text-neutral-700 dark:text-neutral-50 dark:hover:text-neutral-200'}`}
+                        />
                     ) : (
                         <CirclePlus className="size-6" strokeWidth={1} />
                     )}

@@ -18,7 +18,7 @@ import {
     Shuffle,
 } from 'lucide-react';
 
-import { useAudio } from './AudioContext';
+import { useAudio } from './AudioContext'; // Assuming this path is correct
 import {
     useState,
     useCallback,
@@ -31,8 +31,8 @@ import {
     AnimatePresence,
     PanInfo
 } from 'framer-motion';
-import { getProxiedImageUrl } from '@/lib/utils';
-import { TrackActions } from '../functions/TrackActions';
+import { getProxiedImageUrl } from '@/lib/utils'; // Assuming this path is correct
+import { TrackActions } from '../functions/TrackActions'; // Assuming this path is correct
 import { Progress } from "@/components/ui/progress";
 
 const BottomPlayer = () => {
@@ -62,38 +62,29 @@ const BottomPlayer = () => {
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [isTitleLong, setIsTitleLong] = useState<boolean>(false);
 
-    // Gallery swipe state
-    const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
-    const [swipeProgress, setSwipeProgress] = useState<number>(0);
-    const swipeThreshold = 80; // Minimum distance for track change
+    const [_swipeDirection, setSwipeDirection] = useState<string | null>(null); // Renamed to avoid conflict if used elsewhere
+    const [_swipeProgress, setSwipeProgress] = useState<number>(0); // Renamed
+    const swipeThreshold = 80;
     const swipeCooldown = useRef<boolean>(false);
     const dragConstraintsRef = useRef(null);
 
-
-    // For mobile
     const [isBottomPlayerVisible, setIsBottomPlayerVisible] = useState(true);
     const [prevScrollPos, setPrevScrollPos] = useState(0);
 
     const currentTrack = tracks?.[currentTrackIndex!];
-    // const prevTrackData = hasPrevTrack ? tracks?.[currentTrackIndex! - 1] : null;
-    // const nextTrackData = hasNextTrack ? tracks?.[currentTrackIndex! + 1] : null;
     const hasShuffle = tracks && tracks.length > 1;
 
-    // Show player when there are tracks
     useEffect(() => {
         if (tracks && tracks.length > 0 && currentTrackIndex !== undefined && currentTrackIndex! >= 0) {
             setIsPlayerVisible(true);
         } else {
             setIsPlayerVisible(false);
-            setIsExpanded(false); // Collapse if player becomes hidden
+            setIsExpanded(false);
         }
-
-        // Always reset swipe state when track changes to ensure clean positions
         setSwipeDirection(null);
         setSwipeProgress(0);
     }, [tracks, currentTrackIndex]);
 
-    // Check title length
     useEffect(() => {
         if (currentTrack?.title && currentTrack.title.length > 20) {
             setIsTitleLong(true);
@@ -102,7 +93,6 @@ const BottomPlayer = () => {
         }
     }, [currentTrack?.title]);
 
-    // Toggle play/pause with button disable safety
     const handlePlayPauseToggle = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isButtonDisabled) return;
@@ -113,19 +103,17 @@ const BottomPlayer = () => {
         finally { setTimeout(() => setIsButtonDisabled(false), 300); }
     }, [togglePlayPause, isButtonDisabled]);
 
-    // Handle volume change
     const handleVolumeChange = useCallback((value: number[]) => {
         setVolume(value[0] / 100);
     }, [setVolume]);
 
-    // Handle seeking
     const handleSeek = useCallback((value: number[]) => {
+        // This setIsDragging(false) might be a bit redundant if no-drag works, but harmless
         setIsDragging(false);
         const newTime = (value[0] / 100) * duration;
         seekTo(newTime);
     }, [duration, seekTo]);
 
-    // Format time
     const formatTime = useCallback((time: number): string => {
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
@@ -134,75 +122,71 @@ const BottomPlayer = () => {
 
     const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-    // Toggle expanded view
     const toggleExpanded = useCallback(() => {
         setIsExpanded(prev => !prev);
-        // Reset gallery state
         setSwipeDirection(null);
         setSwipeProgress(0);
     }, []);
 
-    // Handle next track
     const handleNextTrack = useCallback(async (e?: React.MouseEvent) => {
         e?.stopPropagation();
         if (isButtonDisabled || !hasNextTrack) return;
         setIsButtonDisabled(true);
         try {
-            // Reset gallery state first to ensure clean position state
             setSwipeDirection(null);
             setSwipeProgress(0);
-            // Then change track
             nextTrack();
         }
         catch (error) { console.error("Error navigating to next track:", error); }
         finally { setTimeout(() => setIsButtonDisabled(false), 300); }
     }, [nextTrack, hasNextTrack, isButtonDisabled]);
 
-    // Handle previous track
     const handlePrevTrack = useCallback(async (e?: React.MouseEvent) => {
         e?.stopPropagation();
         if (isButtonDisabled || !hasPrevTrack) return;
         setIsButtonDisabled(true);
         try {
-            // Reset gallery state first to ensure clean position state
             setSwipeDirection(null);
             setSwipeProgress(0);
-            // Then change track
             prevTrack();
         }
         catch (error) { console.error("Error navigating to previous track:", error); }
         finally { setTimeout(() => setIsButtonDisabled(false), 300); }
     }, [prevTrack, hasPrevTrack, isButtonDisabled]);
 
-    // Handle shuffle
     const handleShuffleToggle = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         if (hasShuffle) { toggleShuffleMode(); }
     }, [toggleShuffleMode, hasShuffle]);
 
-    // Handle repeat
     const handleRepeatToggle = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         toggleRepeatMode();
     }, [toggleRepeatMode]);
 
-    // Gallery swipe handlers
-    const handleDragStart = useCallback(() => {
-        if (isExpanded || swipeCooldown.current) return;
-        // Disable dragging if there is no previous or next track
-        if (!hasNextTrack && !hasPrevTrack) return;
+    const handleDragStart = useCallback((event: MouseEvent | TouchEvent | PointerEvent) => {
+        if (isExpanded || swipeCooldown.current) return false;
+
+        const target = event.target as HTMLElement;
+        const isControl = target.closest('button') ||
+            target.closest('.no-drag') ||
+            target.tagName === 'BUTTON' || // Can be redundant if buttons are handled by target.closest
+            target.closest('[role="slider"]');
+
+        if (isControl) {
+            return false; // Prevent drag if interacting with a control element
+        }
+        if (!hasNextTrack && !hasPrevTrack) return false;
 
         setIsDragging(true);
-    }, [isExpanded]);
+        return true; // Allow drag
+    }, [isExpanded, hasNextTrack, hasPrevTrack]); // swipeCooldown.current is a ref, not needed in deps
 
-    const handleDrag = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDrag = useCallback((_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (isExpanded || swipeCooldown.current) return;
 
         const xOffset = info.offset.x;
-        // Limit the drag distance for better control
         const clampedOffset = Math.max(-100, Math.min(100, xOffset));
-
-        // Calculate progress as percentage of threshold
         const progress = Math.abs(clampedOffset) / swipeThreshold;
         setSwipeProgress(Math.min(1, progress));
 
@@ -213,61 +197,52 @@ const BottomPlayer = () => {
         } else {
             setSwipeDirection(null);
         }
-    }, [isExpanded, hasNextTrack, hasPrevTrack]);
+    }, [isExpanded, hasNextTrack, hasPrevTrack, swipeThreshold]); // swipeCooldown.current is a ref
 
-    const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        // if no next or previous track, disable dragging
-        if (isExpanded || swipeCooldown.current || (!hasNextTrack && !hasPrevTrack)) return;
-
+    const handleDragEnd = useCallback((_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (isExpanded || swipeCooldown.current || (!hasNextTrack && !hasPrevTrack)) {
+            setIsDragging(false); // Ensure dragging state is reset
+            setSwipeDirection(null);
+            setSwipeProgress(0);
+            return;
+        }
 
         setIsDragging(false);
         const xOffset = info.offset.x;
         const xVelocity = info.velocity.x;
-
-        // Use velocity for more natural gallery feel - faster swipe requires less distance
         const effectiveThreshold = Math.abs(xVelocity) > 500 ? swipeThreshold * 0.7 : swipeThreshold;
 
+        let didSwipe = false;
         if (xOffset < -effectiveThreshold && hasNextTrack) {
-            // Set cooldown to prevent multiple rapid swipes
             swipeCooldown.current = true;
-            setTimeout(() => {
-                swipeCooldown.current = false;
-            }, 500);
-
-            // Switch to next track
+            setTimeout(() => { swipeCooldown.current = false; }, 500);
             handleNextTrack();
+            didSwipe = true;
         } else if (xOffset > effectiveThreshold && hasPrevTrack) {
-            // Set cooldown to prevent multiple rapid swipes
             swipeCooldown.current = true;
-            setTimeout(() => {
-                swipeCooldown.current = false;
-            }, 500);
-
-            // Switch to previous track
+            setTimeout(() => { swipeCooldown.current = false; }, 500);
             handlePrevTrack();
+            didSwipe = true;
         }
 
-        // Always reset position and swipe state regardless of whether track changed
+        // Reset swipe direction and progress regardless.
+        // If dragSnapToOrigin is true, Framer Motion handles snapping back if no swipe.
         setSwipeDirection(null);
         setSwipeProgress(0);
-    }, [isExpanded, hasNextTrack, hasPrevTrack, handleNextTrack, handlePrevTrack]);
 
-    // Bottom player scroll down-up
+    }, [isExpanded, hasNextTrack, hasPrevTrack, handleNextTrack, handlePrevTrack, swipeThreshold]); // swipeCooldown.current is a ref
+
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollPos = window.scrollY;
-
             if (currentScrollPos > prevScrollPos && currentScrollPos > 100) {
                 setIsBottomPlayerVisible(false);
             } else {
                 setIsBottomPlayerVisible(true);
             }
-
             setPrevScrollPos(currentScrollPos);
         };
-
         window.addEventListener('scroll', handleScroll);
-
         return () => window.removeEventListener('scroll', handleScroll);
     }, [prevScrollPos]);
 
@@ -275,10 +250,7 @@ const BottomPlayer = () => {
         return null;
     }
 
-    // Get track cover images
     const currentCoverSrc = getProxiedImageUrl(currentTrack?.cover || '/default-cover.jpg');
-    // const prevCoverSrc = prevTrackData ? getProxiedImageUrl(prevTrackData?.cover || '/default-cover.jpg') : null;
-    // const nextCoverSrc = nextTrackData ? getProxiedImageUrl(nextTrackData?.cover || '/default-cover.jpg') : null;
 
     return (
         <AnimatePresence>
@@ -286,7 +258,7 @@ const BottomPlayer = () => {
                 ref={dragConstraintsRef}
                 className={`fixed bg-sidebar glassmorphism z-100 select-none
                           ${isExpanded
-                        ? 'inset-0 overflow-hidden' // Cover full screen when expanded
+                        ? 'inset-0 overflow-hidden'
                         : `transition-all ease-in-out duration-300 left-0 w-full p-4
                           ${isBottomPlayerVisible
                             ? 'bottom-14 sm:bottom-20 md:bottom-0'
@@ -302,65 +274,27 @@ const BottomPlayer = () => {
                     mass: 1
                 }}
             >
-
-                {/* Gallery Track Preview - Only shown during horizontal swipe */}
-                {/* 
-                {!isExpanded && swipeDirection && (
-                    <div
-                        className="absolute inset-0 flex items-center justify-center pointer-events-none w-full h-full"
-                        style={{
-                            opacity: swipeProgress,
-                            zIndex: 10
-                        }}
-                    >
-                        <div className="flex flex-col items-center justify-center p-6 rounded-xl glassmorphism">
-                            <Image
-                                src={swipeDirection === 'next' ? nextCoverSrc! : prevCoverSrc!}
-                                alt={`${swipeDirection === 'next' ? 'Next' : 'Previous'} Track Cover`}
-                                width={120}
-                                height={120}
-                                className="rounded-lg mb-3 shadow-lg"
-                                draggable={false}
-                            />
-                            <h4 className="font-semibold text-white truncate max-w-xs mb-1">
-                                {swipeDirection === 'next'
-                                    ? nextTrackData?.title || "Next Track"
-                                    : prevTrackData?.title || "Previous Track"}
-                            </h4>
-                            <p className="text-sm text-gray-300 truncate max-w-xs">
-                                {swipeDirection === 'next'
-                                    ? nextTrackData?.author || "Unknown Artist"
-                                    : prevTrackData?.author || "Unknown Artist"}
-                            </p>
-                        </div>
-                    </div>
-                )} 
-                */}
-
-                {/* Main player content */}
                 <motion.div
                     className={`w-full h-full flex 
-                               ${isExpanded
-                            ? 'flex-col items-center justify-between p-4 pt-6 pb-32 overflow-y-auto' // Expanded layout
-                            : 'flex-col md:flex-row items-center justify-between gap-4' // Collapsed layout
-                        }`}
-                    drag={!isExpanded ? "x" : false} // Only allow horizontal drag when collapsed
+               ${isExpanded
+                            ? 'flex-col items-center justify-between p-4 pt-6 pb-32 overflow-y-auto'
+                            : 'flex-col md:flex-row items-center justify-between gap-4'}`}
+                    drag={!isExpanded ? "x" : false}
                     dragConstraints={dragConstraintsRef}
-                    dragElastic={0.1} // Less elastic for more control
-                    dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
+                    dragElastic={0.09}
+                    dragMomentum={false}
+                    dragSnapToOrigin={true} // Added: snaps back if not dragged enough
+                    dragTransition={{ // Adjusted for potentially smoother snap
+                        bounceStiffness: 600,
+                        bounceDamping: 30,
+                        power: 0.5
+                    }}
                     onDragStart={handleDragStart}
                     onDrag={handleDrag}
                     onDragEnd={handleDragEnd}
-                    initial={{ x: 0 }} // Always start from default position
-                    animate={{
-                        x: swipeDirection === 'next' ? -swipeProgress * 20 :
-                            swipeDirection === 'prev' ? swipeProgress * 20 : 0
-                    }}
-                    transition={{
-                        x: { type: "spring", stiffness: 500, damping: 30 } // Quick spring-back 
-                    }}
+                    initial={{ x: 0 }}
+                // Removed conflicting 'animate.x' and 'transition.x' props
                 >
-                    {/* Minimize Button (Expanded Only) */}
                     {isExpanded && (
                         <div className="absolute top-4 right-4 z-20">
                             <motion.button
@@ -376,12 +310,11 @@ const BottomPlayer = () => {
                         </div>
                     )}
 
-                    {/* Track Info */}
                     <div
                         className={`flex items-center gap-x-4 flex-shrink-0 order-1 md:order-1
                                    ${isExpanded
-                                ? 'mt-10 flex-col justify-center text-center gap-y-4' // Expanded: Centered column
-                                : 'w-full md:w-[250px] lg:w-[300px] cursor-pointer' // Collapsed: Fixed width
+                                ? 'mt-10 flex-col justify-center text-center gap-y-4'
+                                : 'w-full md:w-[250px] lg:w-[300px] cursor-pointer'
                             }`}
                     >
                         <Image
@@ -394,13 +327,10 @@ const BottomPlayer = () => {
                             onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
                             draggable={false}
                         />
-
-                        {/* Title and Author Container */}
                         <div
                             className={`flex flex-col justify-center min-w-0 ${isExpanded ? 'items-center' : 'flex-grow'}`}
                             onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
                         >
-                            {/* Marquee Title */}
                             <div className={`font-semibold ${isExpanded ? 'text-xl mb-1' : 'w-full overflow-hidden whitespace-nowrap'}`}>
                                 {!isExpanded && isTitleLong ? (
                                     <Marquee gradient={false} speed={30} play={true}>
@@ -417,7 +347,6 @@ const BottomPlayer = () => {
                             </p>
                         </div>
 
-                        {/* Collapsed View Buttons (Like/Mobile Play) */}
                         {!isExpanded && (
                             <div className="flex items-center ml-auto md:ml-4 flex-shrink-0">
                                 <TrackActions trackId={currentTrack?.id || ''} heart={true} />
@@ -432,18 +361,15 @@ const BottomPlayer = () => {
                                     ) : (
                                         <Play className={`w-6 h-6`} />
                                     )}
-                                    {isButtonDisabled ? <div className="absolute w-6 h-6 opacity-0"></div> : <></>}
+                                    {isButtonDisabled && <div className="absolute w-6 h-6 opacity-0"></div>}
                                 </motion.button>
                             </div>
                         )}
                     </div>
 
-                    {/* Player Controls - Middle */}
                     <div className={`flex flex-col items-center justify-center w-full order-3 md:order-2 flex-grow min-w-0
                                    ${isExpanded ? 'mt-8 mb-8' : 'hidden sm:flex'}`}>
-
                         <div className={`flex items-center space-x-3 md:space-x-4 ${isExpanded ? 'mb-6' : 'mb-2'}`}>
-                            {/* Shuffle */}
                             <motion.button
                                 className={`p-2 rounded-full ${!hasShuffle ? 'opacity-50 cursor-not-allowed' : shuffleMode ? 'text-purple-500 bg-purple-500/10' : 'hover:bg-white/10'}`}
                                 onClick={handleShuffleToggle}
@@ -452,7 +378,6 @@ const BottomPlayer = () => {
                             >
                                 <Shuffle className={`font-thin w-5 h-5`} />
                             </motion.button>
-                            {/* Prev */}
                             <motion.button
                                 className={`p-1 rounded-full ${hasPrevTrack && !isButtonDisabled ? 'hover:bg-white/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                 onClick={hasPrevTrack && !isButtonDisabled ? handlePrevTrack : undefined}
@@ -461,7 +386,6 @@ const BottomPlayer = () => {
                             >
                                 <ChevronLeft className={`font-thin w-8 h-8`} />
                             </motion.button>
-                            {/* Play/Pause */}
                             <motion.button
                                 className={`flex items-center justify-center 
                                             ${isExpanded ? 'w-14 h-14' : 'w-10 h-10'} 
@@ -476,9 +400,8 @@ const BottomPlayer = () => {
                                 ) : (
                                     <Play className={`w-7 h-7`} />
                                 )}
-                                {isButtonDisabled ? <div className="absolute w-7 h-7 opacity-0"></div> : <></>}
+                                {isButtonDisabled && <div className="absolute w-7 h-7 opacity-0"></div>}
                             </motion.button>
-                            {/* Next */}
                             <motion.button
                                 className={`p-1 rounded-full ${hasNextTrack && !isButtonDisabled ? 'hover:bg-white/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                 onClick={hasNextTrack && !isButtonDisabled ? handleNextTrack : undefined}
@@ -487,7 +410,6 @@ const BottomPlayer = () => {
                             >
                                 <ChevronRight className={`font-thin w-8 h-8`} />
                             </motion.button>
-                            {/* Repeat */}
                             <motion.div whileTap={{ scale: 0.9 }}>
                                 <Toggle
                                     className={`p-2 rounded-full data-[state=on]:bg-purple-500/10 data-[state=on]:text-purple-500 hover:bg-white/10`}
@@ -499,25 +421,25 @@ const BottomPlayer = () => {
                             </motion.div>
                         </div>
 
-                        {/* Song Progress Slider */}
-                        <div className={`flex items-center w-full max-w-[500px] px-4 md:px-0 gap-x-2 ${isExpanded ? 'mt-4' : 'mt-1'}`}>
+                        {/* Added 'no-drag' to this div to prevent dragging on progress slider */}
+                        <div className={`flex items-center w-full max-w-[500px] px-4 md:px-0 gap-x-2 no-drag ${isExpanded ? 'mt-4' : 'mt-1'}`}>
                             <span className="text-xs text-gray-400 w-8 text-right tabular-nums">{formatTime(currentTime)}</span>
                             <Slider
                                 value={[progressPercentage]}
                                 max={100}
                                 step={0.1}
-                                onValueChange={handleSeek}
-                                onValueCommit={handleSeek}
+                                onValueChange={handleSeek} // handleSeek is called on continuous change
+                                onValueCommit={handleSeek} // handleSeek is also called when interaction ends
                                 aria-label="song progress"
-                                className="flex-grow cursor-pointer"
+                                className="flex-grow cursor-pointer" // This class is fine
                                 disabled={isButtonDisabled || duration <= 0}
                             />
                             <span className="text-xs text-gray-400 w-8 text-left tabular-nums">{formatTime(duration || 0)}</span>
                         </div>
                     </div>
 
-                    {/* Volume Control */}
-                    <div className={`hidden md:flex items-center space-x-2 w-[150px] lg:w-[180px] justify-end order-2 md:order-3 flex-shrink-0
+                    {/* This div already has 'no-drag' which is good for volume slider */}
+                    <div className={`hidden md:flex items-center space-x-2 w-[150px] lg:w-[180px] justify-end order-2 md:order-3 flex-shrink-0 no-drag
                                    ${isExpanded ? '!hidden' : ''}`}>
                         {volume === 0 ?
                             <VolumeX className='w-5 h-5 cursor-pointer text-gray-400 hover:text-white' onClick={() => setVolume(0.5)} /> :
@@ -531,11 +453,10 @@ const BottomPlayer = () => {
                             step={1}
                             onValueChange={handleVolumeChange}
                             aria-label="volume"
-                            className="w-24 flex-grow cursor-pointer"
+                            className="w-24 flex-grow cursor-pointer" // This class is fine
                         />
                     </div>
 
-                    {/* Mobile Progress Bar */}
                     {!isExpanded && (
                         <div className="flex sm:hidden w-full order-4">
                             <Progress
@@ -546,7 +467,7 @@ const BottomPlayer = () => {
                     )}
                 </motion.div>
             </motion.footer>
-        </AnimatePresence>
+        </AnimatePresence >
     );
 };
 
