@@ -8,11 +8,6 @@ export function cn(...inputs: ClassValue[]) {
 // get proxied image
 // Helper function to transform image URLs
 export const getProxiedImageUrl = (coverPath: string): string => {
-  // If it's already a full URL or the default cover, use it as is
-  if (coverPath === '/default-cover.jpg' || coverPath.startsWith('data:') || coverPath.startsWith('http')) {
-    return coverPath;
-  }
-
   // If it's a cover path from our backend, use the proxy
   if (coverPath.startsWith('/covers/')) {
     const filename = coverPath.split('/').pop();
@@ -20,7 +15,7 @@ export const getProxiedImageUrl = (coverPath: string): string => {
   }
 
   // Fallback to the default cover
-  return '/default-cover.jpg';
+  return '/api/cover/default-cover.jpg';
 };
 
 // Helper function to transform track IDs into proxied stream URLs

@@ -49,6 +49,7 @@ export const GetLikedSongs = () => {
             error={error}
             handleTrackSelect={handleTrackSelect}
             layout="list"
+            likes={true}
         />
     );
 };

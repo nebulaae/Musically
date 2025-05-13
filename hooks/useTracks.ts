@@ -147,12 +147,19 @@ const trackAggregates = new Map<string, Track[]>();
 export const useTracks = (options?: { trackNames?: string[]; page?: number; limit?: number; search?: string }) => {
   const { trackNames = [], page = 1, limit = 10, search = "" } = options || {};
 
+  // Determine if we're fetching by IDs or names
+  const isFetchingByIds = useMemo(() => {
+    return trackNames.length > 0 && trackNames.every(track => !isNaN(Number(track)));
+  }, [trackNames]);
+
   // Create a unique identifier for this hook instance
   const instanceId = useMemo(() => {
+    // For ID-based fetching, we use a different prefix
+    const prefix = isFetchingByIds ? "tracks-by-id" : "tracks";
     return trackNames.length > 0
-      ? `tracks-${trackNames.sort().join(",")}-${search}`
+      ? `${prefix}-${trackNames.sort().join(",")}-${search}`
       : `all-tracks-${search}`;
-  }, [trackNames, search]);
+  }, [trackNames, search, isFetchingByIds]);
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,12 +186,14 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
   }, [instanceId]);
 
   const cacheKey = useMemo(() => {
-    const baseKey = trackNames.length > 0
-      ? trackNames.sort().join(",")
-      : "all-tracks";
+    const baseKey = isFetchingByIds
+      ? `tracks-by-id-${trackNames.sort().join(",")}`
+      : trackNames.length > 0
+        ? `tracks-by-name-${trackNames.sort().join(",")}`
+        : "all-tracks";
     const searchParam = search ? `-search-${search}` : '';
     return `${baseKey}${searchParam}-page${currentPage}-limit${limit}`;
-  }, [trackNames, currentPage, limit, search]);
+  }, [trackNames, currentPage, limit, search, isFetchingByIds]);
 
   const goToPage = useCallback((newPage: number) => {
     if (newPage !== currentPage) setCurrentPage(newPage);
@@ -256,7 +265,15 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
         queryParams.append("page", currentPage.toString());
         queryParams.append("limit", limit.toString());
         if (search) queryParams.append("search", search);
-        trackNames.forEach((name) => queryParams.append("tracks", name));
+
+        // Handle both ID-based and name-based fetching
+        if (isFetchingByIds) {
+          // For ID-based fetching, use 'tracks' parameter which the backend will interpret as IDs
+          trackNames.forEach((id) => queryParams.append("tracks", id));
+        } else {
+          // For name-based fetching (as per original implementation)
+          trackNames.forEach((name) => queryParams.append("tracks", name));
+        }
 
         // Fetching from the frontend API route that forwards to the backend
         const url = `/api/tracks?${queryParams.toString()}`;
@@ -320,7 +337,7 @@ export const useTracks = (options?: { trackNames?: string[]; page?: number; limi
     return () => {
       isMountedRef.current = false;
     };
-  }, [cacheKey, currentPage, limit, fetchTracksData, instanceId]);
+  }, [cacheKey, currentPage, limit, fetchTracksData, instanceId, isFetchingByIds]);
 
   // Handle track selection without dependency on changing state
   const handleTrackSelect = useCallback((index: number, trackList?: Track[]) => {

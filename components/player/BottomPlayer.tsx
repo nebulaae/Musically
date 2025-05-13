@@ -276,15 +276,15 @@ const BottomPlayer = () => {
             >
                 <motion.div
                     className={`w-full h-full flex 
-               ${isExpanded
+                            ${isExpanded
                             ? 'flex-col items-center justify-between p-4 pt-6 pb-32 overflow-y-auto'
                             : 'flex-col md:flex-row items-center justify-between gap-4'}`}
-                    drag={!isExpanded ? "x" : false}
+                    drag={!isExpanded && window.innerWidth <= 1024 ? "x" : false} // Drag only for screens <= 1024px
                     dragConstraints={dragConstraintsRef}
                     dragElastic={0.09}
                     dragMomentum={false}
-                    dragSnapToOrigin={true} // Added: snaps back if not dragged enough
-                    dragTransition={{ // Adjusted for potentially smoother snap
+                    dragSnapToOrigin={true}
+                    dragTransition={{
                         bounceStiffness: 600,
                         bounceDamping: 30,
                         power: 0.5
@@ -293,7 +293,6 @@ const BottomPlayer = () => {
                     onDrag={handleDrag}
                     onDragEnd={handleDragEnd}
                     initial={{ x: 0 }}
-                // Removed conflicting 'animate.x' and 'transition.x' props
                 >
                     {isExpanded && (
                         <div className="absolute top-4 right-4 z-20">
@@ -357,9 +356,9 @@ const BottomPlayer = () => {
                                     disabled={isButtonDisabled}
                                 >
                                     {isPlaying ? (
-                                        <Pause className={`w-6 h-6`} />
+                                        <Pause className="fill-black dark:fill-white w-6 h-6" />
                                     ) : (
-                                        <Play className={`w-6 h-6`} />
+                                        <Play className="fill-black dark:fill-white w-6 h-6" />
                                     )}
                                     {isButtonDisabled && <div className="absolute w-6 h-6 opacity-0"></div>}
                                 </motion.button>
@@ -396,9 +395,9 @@ const BottomPlayer = () => {
                                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                             >
                                 {isPlaying ? (
-                                    <Pause className={`w-7 h-7`} />
+                                    <Pause className="fill-black dark:fill-white w-7 h-7" />
                                 ) : (
-                                    <Play className={`w-7 h-7`} />
+                                    <Play className="fill-black dark:fill-white w-7 h-7" />
                                 )}
                                 {isButtonDisabled && <div className="absolute w-7 h-7 opacity-0"></div>}
                             </motion.button>

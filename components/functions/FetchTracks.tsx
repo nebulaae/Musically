@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { Play, Pause } from 'lucide-react';
 import { SoundWave } from '../ui/magic/SoundWave';
-import { TrackActions } from './TrackActions';
 import {
   Pagination,
   PaginationContent,
@@ -16,7 +15,10 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 
+
+import { LikeButton } from './LikeButton';
 import { Track } from '@/server/models/track';
+import { TrackActions } from './TrackActions';
 import { getProxiedImageUrl } from '@/lib/utils';
 import { useAudio } from '@/components/player/AudioContext';
 import {
@@ -31,6 +33,7 @@ interface BaseTrackItemProps {
   index: number;
   isPlaying: boolean;
   handleTrackSelect: (index: number) => void;
+  likes?: boolean;
 }
 
 // Track cover image component to reduce duplication
@@ -117,7 +120,7 @@ const TrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: BaseTrac
 TrackItem.displayName = 'TrackItem';
 
 // Memoized ListTrackItem component
-const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: BaseTrackItemProps) => {
+const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect, likes }: BaseTrackItemProps) => {
   const handleClick = useCallback(() => {
     handleTrackSelect(index);
   }, [handleTrackSelect, index]);
@@ -141,7 +144,11 @@ const ListTrackItem = memo(({ track, index, isPlaying, handleTrackSelect }: Base
       </div>
 
       <div className="flex items-center pr-2 sm:pr-4 flex-shrink-0">
-        <TrackActions trackId={track.id} />
+        {likes ? (
+          <LikeButton trackId={track.id} />
+        ) : (
+          <TrackActions trackId={track.id} />
+        )}
       </div>
     </div>
   );
@@ -162,6 +169,7 @@ interface FetchTracksProps {
   totalPages?: number;
   currentPage?: number;
   goToPage?: (page: number) => void;
+  likes?: boolean;
 }
 
 // Loading skeletons component
@@ -290,7 +298,8 @@ export const FetchTracks = memo(({
   variant = 'flex',
   totalPages = 1,
   currentPage = 1,
-  goToPage = () => { }
+  goToPage = () => { },
+  likes = false,
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
@@ -383,6 +392,7 @@ export const FetchTracks = memo(({
             index={index}
             isPlaying={isTrackPlaying(track)}
             handleTrackSelect={handleTrackSelection}
+            likes={likes}
           />
         ))}
       </div>

@@ -2,10 +2,18 @@
 
 import { useTracks } from "@/hooks/useTracks";
 import { FetchTracks } from "@/components/functions/FetchTracks";
+import { CollectionLink } from "@/components/shared/Collections";
 
 const Page = () => {
+
     const all = useTracks(({
         trackNames: [], // if no names, it will render all tracks
+        page: 1,
+        limit: 10
+    }));
+
+    const someCollection = useTracks(({
+        trackNames: ["6e845139983cb5b131542dc028af8303", '89e15d83498a252730be17161fe3b4e1'], // it should render the selected track
         page: 1,
         limit: 10
     }));
@@ -21,7 +29,7 @@ const Page = () => {
                             <h3 className="subtitle-text">Слушайте только лучшее</h3>
                         </div>
                         {/* Если вы не хотите пагинацию добавляйте этот элемент */}
-                        <a className="text-sm sm:text-base purple-text-hover">Слушать все</a>
+                        <CollectionLink href="ayfar" />
                     </div>
                     <FetchTracks
                         tracks={all.tracks}
@@ -33,6 +41,27 @@ const Page = () => {
                         totalPages={all.totalPages}
                         currentPage={all.currentPage}
                         goToPage={all.goToPage}
+                    />
+
+                    <div className="flex flex-row items-center justify-between">
+                        {/* Блок заголовка и подзагаловка */}
+                        <div className="flex flex-col gap-2">
+                            <h1 className="title-text">Подборка</h1>
+                            <h3 className="subtitle-text">Слушайте только лучшее</h3>
+                        </div>
+                        {/* Если вы не хотите пагинацию добавляйте этот элемент */}
+                        <CollectionLink href="ansamble" title="Перейти к подборке" />
+                    </div>
+                    <FetchTracks
+                        tracks={someCollection.tracks}
+                        isLoading={someCollection.isLoading}
+                        error={someCollection.error}
+                        handleTrackSelect={someCollection.handleTrackSelect}
+                        layout="blocks"
+                        variant="grid"
+                        totalPages={someCollection.totalPages}
+                        currentPage={someCollection.currentPage}
+                        goToPage={someCollection.goToPage}
                     />
                 </div>
             </div>

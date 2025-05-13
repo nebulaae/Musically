@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Authorise } from '@/components/shared/Authorise';
+import { Authorize } from '@/components/shared/Authorize';
 import { PlaylistGrid } from '@/components/shared/PlaylistGrid';
 import {
     Settings,
@@ -47,11 +47,7 @@ const Page = () => {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                 });
-
-                if (!response.ok) {
-                    toast.error('Ошибка при загрузке пользователя.');
-                }
-
+                
                 const data = await response.json();
                 setUser(data.user);
 
@@ -75,10 +71,6 @@ const Page = () => {
                     headers: { 'Content-Type': 'application/json' },
                 });
 
-                if (!response.ok) {
-                    toast.error('Ошибка при загрузке пользователя.');
-                }
-
                 const data = await response.json();
 
                 setTotalLikes(data.total);
@@ -101,10 +93,6 @@ const Page = () => {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                 });
-
-                if (!response.ok) {
-                    toast.error('Ошибка при загрузке пользователя.');
-                }
 
                 const data = await response.json();
 
@@ -148,7 +136,7 @@ const Page = () => {
     };
 
     if (error) return <div className="flex items-center justify-center w-full text-red-500">Ошибка: {error}</div>;
-    if (!user) return <Authorise profile />;
+    if (!user) return <Authorize />;
 
     return (
         <section className="flex flex-col items-center w-full pb-40">
