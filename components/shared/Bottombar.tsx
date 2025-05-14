@@ -32,8 +32,8 @@ export const Bottombar = () => {
         },
         {
             id: 3,
-            title: "Плейлисты",
-            url: "/playlist",
+            title: "Подборки",
+            url: "/collections",
             icon: <LibraryBig />,
         },
         {

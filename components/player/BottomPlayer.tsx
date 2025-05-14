@@ -295,7 +295,7 @@ const BottomPlayer = () => {
                     initial={{ x: 0 }}
                 >
                     {isExpanded && (
-                        <div className="absolute top-4 right-4 z-20">
+                        <div className="absolute md:top-4 bottom-4 right-4 z-20">
                             <motion.button
                                 className="p-3 rounded-lg bg-neutral-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-50 shadow-2xl"
                                 onClick={(e) => {
@@ -310,8 +310,8 @@ const BottomPlayer = () => {
                     )}
 
                     <div
-                        className={`flex items-center gap-x-4 flex-shrink-0 order-1 md:order-1
-                                   ${isExpanded
+                        className={`flex items-center gap-x-4 flex-shrink-0 order-1 md:order-1 no-drag
+                                ${isExpanded
                                 ? 'mt-10 flex-col justify-center text-center gap-y-4'
                                 : 'w-full md:w-[250px] lg:w-[300px] cursor-pointer'
                             }`}
@@ -323,16 +323,16 @@ const BottomPlayer = () => {
                             height={isExpanded ? 250 : 48}
                             className={`rounded-sm flex-shrink-0 ${isExpanded ? 'rounded-xl shadow-xl mb-4' : ''}`}
                             priority
-                            onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
+                            onClick={isExpanded ? undefined : toggleExpanded}
                             draggable={false}
                         />
                         <div
                             className={`flex flex-col justify-center min-w-0 ${isExpanded ? 'items-center' : 'flex-grow'}`}
-                            onClick={isDragging ? undefined : (isExpanded ? undefined : toggleExpanded)}
+                            onClick={isExpanded ? undefined : toggleExpanded}
                         >
                             <div className={`font-semibold ${isExpanded ? 'text-xl mb-1' : 'w-full overflow-hidden whitespace-nowrap'}`}>
                                 {!isExpanded && isTitleLong ? (
-                                    <Marquee gradient={false} speed={30} play={true}>
+                                    <Marquee gradient={false} speed={30} play={true} className="select-none">
                                         <span className="pr-4">{currentTrack?.title}</span>
                                     </Marquee>
                                 ) : (
