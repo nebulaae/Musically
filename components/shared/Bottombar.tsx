@@ -21,7 +21,7 @@ export const Bottombar = () => {
         {
             id: 1,
             title: "Главная",
-            url: "/",
+            url: "/home",
             icon: <Home />,
         },
         {

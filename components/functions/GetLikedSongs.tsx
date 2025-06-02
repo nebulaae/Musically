@@ -5,7 +5,13 @@ import { useState, useEffect } from "react";
 import { Track } from "@/server/models/track";
 import { useAudio } from "../player/AudioContext";
 
-export const GetLikedSongs = () => {    
+export const GetLikedSongs = ({
+    limit,
+    title,
+}: {
+    limit?: number;
+    title?: string;
+}) => {
     const [likedTracks, setLikedTracks] = useState<Track[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState("");
@@ -50,6 +56,8 @@ export const GetLikedSongs = () => {
             handleTrackSelect={handleTrackSelect}
             layout="list"
             likes={true}
+            title={title}
+            limit={limit}
         />
     );
 };

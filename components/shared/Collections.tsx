@@ -10,6 +10,7 @@ interface CollectionCardProps {
     href: string;
     name: string;
     genre?: string;
+    size?: "sm" | "md" | "xl" | "full";
 };
 
 interface CollectionLinkProps {
@@ -21,6 +22,7 @@ export const CollectionCard = ({
     href,
     name,
     genre,
+    size = "full",
 }: CollectionCardProps) => {
     const [color, setColor] = useState<string>("");
 
@@ -46,9 +48,21 @@ export const CollectionCard = ({
         <div className="relative">
             <Link href={`/collections/${href}`}>
                 <div
-                    className={`relative w-full aspect-video rounded-lg p-6 overflow-hidden cursor-pointer ${color}`}
+                    className={`relative
+                        ${
+                            size === "full"
+                                ? "w-full "
+                                : size === "xl"
+                                ? "w-48"
+                                : size === "md"
+                                ? "w-32"
+                                : size === "sm"
+                                ? "w-16"
+                                : ""
+                        } aspect-video rounded-lg p-6 overflow-hidden cursor-pointer
+                        ${color}`}
                 >
-                    <h1 className=" title-text">{name}</h1>
+                    <h1 className="title-text text-white">{name}</h1>
                     <div className="absolute bottom-0 right-0 opacity-80 p-6">
                         <Music2 className="w-20 h-20 text-white opacity-50" />
                     </div>

@@ -27,7 +27,7 @@ const links = [
     {
         id: 1,
         title: "Главная",
-        url: "/",
+        url: "/home",
         icon: <Home />,
     },
     {

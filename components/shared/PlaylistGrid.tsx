@@ -1,5 +1,7 @@
 "use client"
 
+import Link from 'next/link';
+
 import { useState, useEffect } from 'react';
 import { usePlaylist } from '@/hooks/usePlaylist';
 
@@ -16,6 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Separator } from '../ui/separator';
 
 export const PlaylistGrid = () => {
     const { playlists, isLoading, createNewPlaylist, refreshPlaylists } = usePlaylist();
@@ -109,6 +112,37 @@ export const PlaylistGrid = () => {
                     </form>
                 </DialogContent>
             </Dialog>
+        </div>
+    );
+};
+
+export const PlaylistList = ({ limit }: { limit?: number }) => {
+    const { playlists, isLoading } = usePlaylist();
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-start justify-center mt-1">
+                <Skeleton className="w-48 h-8" />
+                <Skeleton className="w-full h-8 mt-2" />
+            </div>
+        );
+    }
+
+    const displayedPlaylists = typeof limit === 'number' ? playlists.slice(0, limit) : playlists;
+
+    return (
+        <div className="flex flex-col gap-2 glassmorphism rounded-xl p-6">
+            <h1 className="title-text pb-2">Ваши плейлисты</h1>
+
+            {displayedPlaylists.map((playlist, i) => (
+                <Link
+                    key={playlist.id}
+                    href={`/playlist/${playlist.id}`}
+                    className={`text-lg purple-text purple-accent-hover ${i % 2 === 0 ? '' : ''}`}
+                >
+                    {i + 1}. {playlist.name}
+                </Link>
+            ))}
         </div>
     );
 };

@@ -2,14 +2,18 @@
 
 import Image from "next/image";
 
-import { FetchTracks } from "@/components/functions/FetchTracks";
-import { useTracks } from "@/hooks/useTracks";
-import { getProxiedImageUrl, pluralize } from "@/lib/utils";
-import { Music } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Music, PauseIcon, Play } from "lucide-react";
+
 import { useState, useEffect } from "react";
+import { useTracks } from "@/hooks/useTracks";
+import { useAudio } from "@/components/player/AudioContext";
+import { getProxiedImageUrl, pluralize } from "@/lib/utils";
+import { FetchTracks } from "@/components/functions/FetchTracks";
 
 const Page = () => {
     const [gradient, setGradient] = useState<string>("");
+    const { playTrackAtIndex, isPlaying, togglePlayPause, currentTrackIndex, tracks: currentTracks } = useAudio();
 
     useEffect(() => {
         // Generate a random gradient for each playlist
@@ -41,6 +45,31 @@ const Page = () => {
 
     // КОНЕЦ
     const coverImage = getProxiedImageUrl(tracks?.length > 0 && tracks[0]?.cover ? tracks[0]?.cover : '/default-cover.jpg');
+
+    // Кнопка паузы и проигрывания
+    const handlePlayPauseClick = () => {
+        if (tracks && tracks.length > 0) {
+            // Check if we're already playing this playlist
+            const currentTrack = currentTracks[currentTrackIndex!];
+            const isCurrentPlaylist = currentTrack &&
+                tracks.some(track => track.id === currentTrack.id);
+
+            if (isCurrentPlaylist) {
+                togglePlayPause();
+            } else {
+                // Start playing from the first track
+                playTrackAtIndex(0, tracks);
+            }
+        }
+    };
+
+    // Check if the playlist is currently playing
+    const isPlaylistPlaying = () => {
+        if (!isPlaying || !tracks || tracks.length === 0) return false;
+
+        const currentTrack = currentTracks[currentTrackIndex!];
+        return currentTrack && tracks.some(track => track.id === currentTrack.id);
+    };
 
 
     return (
@@ -86,6 +115,26 @@ const Page = () => {
 
             {/* Transparent gradient transition to content */}
             <div className="relative z-10 bg-gradient-to-b backdrop-blur-xl bg-opacity-50 from-transparent to-neutral-50 dark:to-neutral-800 h-24 mt-6" />
+
+            {/* Кнопка паузы и проигрывания */}
+            <div className="relative z-10 bg-main">
+                {/* Playlist Controls */}
+                <div className="py-4 px-6 md:px-8 flex items-start gap-4 -mt-16">
+                    <Button
+                        onClick={handlePlayPauseClick}
+                        className={`rounded-full size-18 flex items-center justify-center cursor-pointer purple-button`}
+                        disabled={tracks.length === 0}
+                    >
+                        {isPlaylistPlaying() ? (
+                            <PauseIcon className="size-6 purple-text fill-purple-800 dark:fill-purple-400" strokeWidth={1} />
+                        ) : (
+                            <Play className="size-6 purple-text fill-purple-800 dark:fill-purple-400" strokeWidth={1} />
+                        )}
+                    </Button>
+                </div>
+            </div>
+            {/* Конец */}
+
 
             <div className="relative z-10 bg-main">
                 {/* Tracks List */}

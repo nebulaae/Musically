@@ -238,8 +238,8 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
                             layout="list"
                         />
                     ) : (
-                        <div className="text-center py-8 backdrop-blur-md bg-opacity-20 bg-neutral-800 rounded-xl p-8">
-                            <p className="text-neutral-300 mb-4">Этот плейлист пустой.</p>
+                        <div className="text-center py-8 glassmorphism rounded-xl p-8">
+                            <p className="text-neutral-500 mb-4">Этот плейлист пустой.</p>
                             <p className="text-sm text-neutral-400">Добавьте песни через сердечко или круглый плюс, и нажмите в "Добавить в плейлист".</p>
                         </div>
                     )}

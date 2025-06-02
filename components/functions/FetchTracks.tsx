@@ -170,6 +170,8 @@ interface FetchTracksProps {
   currentPage?: number;
   goToPage?: (page: number) => void;
   likes?: boolean;
+  title?: string;
+  limit?: number;
 }
 
 // Loading skeletons component
@@ -300,6 +302,8 @@ export const FetchTracks = memo(({
   currentPage = 1,
   goToPage = () => { },
   likes = false,
+  title,
+  limit,
 }: FetchTracksProps) => {
   const { isPlaying, currentTrackIndex, tracks: currentTracks } = useAudio();
 
@@ -339,6 +343,9 @@ export const FetchTracks = memo(({
     handleTrackSelect(index, tracks);
   }, [handleTrackSelect, tracks]);
 
+  // Determine which tracks to render based on limit
+  const displayedTracks = typeof limit === 'number' ? tracks.slice(0, limit) : tracks;
+
   // For loading state
   if (isLoading) {
     return <LoadingSkeletons layout={layout} />;
@@ -350,7 +357,7 @@ export const FetchTracks = memo(({
   }
 
   // For empty state
-  if (tracks.length === 0) {
+  if (displayedTracks.length === 0) {
     return <div className="text-start py-4">Песни не найдены.</div>;
   }
 
@@ -362,7 +369,7 @@ export const FetchTracks = memo(({
           ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
           : "flex flex-row overflow-x-auto overflow-y-hidden gap-3 sm:gap-4 w-full pb-2 scrollbar-thin"
         }>
-          {tracks.map((track, index) => (
+          {displayedTracks.map((track, index) => (
             <TrackItem
               key={track.id}
               track={track}
@@ -384,8 +391,9 @@ export const FetchTracks = memo(({
   // Render List layout
   return (
     <div className="flex flex-col w-full">
-      <div className="bg-sidebar glassmorphism w-full border-style rounded-lg p-2 divide-y">
-        {tracks.map((track, index) => (
+      <div className="bg-sidebar glassmorphism w-full border-style rounded-lg p-2 ">
+        {title ? (<h1 className="title-text px-2 py-4">{title}</h1>) : null}
+        {displayedTracks.map((track, index) => (
           <ListTrackItem
             key={track.id}
             track={track}
