@@ -32,13 +32,13 @@ const Page = () => {
     const [error, setError] = useState("");
 
     // Треки которые вы хотите видеть в окне приветствия
-    const someCollection = useTracks({
-        trackNames: ["6e845139983cb5b131542dc028af8303", '89e15d83498a252730be17161fe3b4e1'],
+    const allCollection = useTracks({
+        trackNames: [],
         page: 1,
-        limit: 10
+        limit: 100000, // Установите лимит на количество треков, которые вы хотите получить
     });
 
-    const tracks = someCollection.tracks;
+    const tracks = allCollection.tracks;
 
     useEffect(() => {
         if (!isTokenExist) {
@@ -136,15 +136,16 @@ const Page = () => {
                             {/* 1. Fetch and display tracks */}
                             <div className="w-full h-full">
                                 <FetchTracks
-                                    tracks={someCollection.tracks}
-                                    isLoading={someCollection.isLoading}
-                                    error={someCollection.error}
-                                    handleTrackSelect={someCollection.handleTrackSelect}
+                                    tracks={allCollection.tracks}
+                                    isLoading={allCollection.isLoading}
+                                    error={allCollection.error}
+                                    handleTrackSelect={allCollection.handleTrackSelect}
                                     layout="list"
-                                    totalPages={someCollection.totalPages}
-                                    currentPage={someCollection.currentPage}
-                                    goToPage={someCollection.goToPage}
+                                    totalPages={allCollection.totalPages}
+                                    currentPage={allCollection.currentPage}
+                                    goToPage={allCollection.goToPage}
                                     title="Рекомендуемые треки"
+                                    limit={2}
                                 />
                             </div>
 
@@ -186,7 +187,7 @@ const Page = () => {
                             {/* 4. Fetch and display user's liked songs if exist */}
                             {isTokenExist && (
                                 <div className="w-full h-full">
-                                    <GetLikedSongs title="Ваши любимые песни" limit={5} />
+                                    <GetLikedSongs title="Ваши любимые песни" limit={2} />
                                     <div className="w-full p-6 mt-4 glassmorphism rounded-xl">
                                         <Link
                                             href="/profile"
